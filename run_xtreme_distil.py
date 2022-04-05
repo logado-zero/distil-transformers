@@ -149,8 +149,8 @@ if __name__ == '__main__':
 
     
 
-    teacher_model = models.construct_transformer_teacher_model(ModelTeacher, teacher_config)
-    logger.info (summary(teacher_model,input_size=(768,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+    teacher_model = models.construct_transformer_teacher_model(args, ModelTeacher, teacher_config)
+    logger.info(summary(teacher_model,input_size=(768,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
     loss_dict = models.compile_model(teacher_model, args, stage=3)
     optimizer = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
     
