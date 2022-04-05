@@ -1,0 +1,5 @@
+sklearn
+transformers
+sentencepiece
+torch
+torch-summary

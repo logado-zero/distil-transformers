@@ -1,16 +1,19 @@
 from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices
-from preprocessing import generate_sequence_data, get_labels
+from preprocessing import generate_sequence_data, get_labels, Dataset
 from transformers import *
 
 import argparse
 import json
 import logging
-
+import models
 import numpy as np
 import os
 import random
 import sys
 import torch
+from torchsummary import summary
+
+
 
 #logging
 logger = logging.getLogger('xtremedistil')
@@ -117,6 +120,11 @@ if __name__ == '__main__':
 
     X_unlabeled, _ = generate_sequence_data(args["seq_len"], args["transfer_file"], pt_tokenizer, label_list=label_list, unlabeled=True, special_tokens=special_tokens, do_pairwise=args["do_pairwise"], do_NER=args["do_NER"])
 
+    #generate Dataset
+    train_dataset = Dataset(X_train,y_train)
+    test_dataset = Dataset(X_test,y_test)
+    dev_dataset = Dataset(X_dev,y_dev)
+
     if not args["do_NER"]:
         label_list = [str(elem) for elem in set(y_train)]
 
@@ -139,5 +147,20 @@ if __name__ == '__main__':
         else:
             logger.info ("Label: {}".format(y_train[i]))
 
+    
 
-            
+    teacher_model = models.construct_transformer_teacher_model(ModelTeacher, teacher_config)
+    logger.info (summary(teacher_model,input_size=(768,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+    loss_dict = models.compile_model(teacher_model, args, stage=3)
+    optimizer = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+    
+    model_file = os.path.join(args["teacher_model_dir"], 'model_weights.pth')
+
+    if os.path.exists(model_file):
+        logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
+        teacher_model.load_state_dict(torch.load(model_file))
+    else:
+        teacher_model = models.train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
+                    batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"])
+        # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
+        torch.save(teacher_model.state_dict(), model_file)

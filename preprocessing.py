@@ -12,6 +12,7 @@ import numpy as np
 import os
 import six
 import tensorflow as tf
+import torch
 
 
 logger = logging.getLogger('xtremedistil')
@@ -162,3 +163,22 @@ def generate_sequence_data(MAX_SEQUENCE_LENGTH, input_file, tokenizer, label_lis
     X["input_ids"], token_type_ids, X["attention_mask"], y = shuffle(X["input_ids"], token_type_ids, X["attention_mask"], y, random_state=GLOBAL_SEED)
 
     return {"input_ids": np.array(X["input_ids"]), "token_type_ids": token_type_ids, "attention_mask": np.array(X["attention_mask"])}, np.array(y)
+
+
+class Dataset(torch.utils.data.Dataset):
+  def __init__(self, input, labels):
+        'Initialization'
+        self.labels = labels
+        self.input = input
+
+  def __len__(self):
+        'Denotes the total number of samples'
+        return len(self.input)
+
+  def __getitem__(self, index):
+        'Generates one sample of data'
+        # Load data and get label
+        X = self.input [index]
+        y = self.labels[index]
+
+        return X, y
