@@ -183,7 +183,7 @@ class Dataset(torch.utils.data.Dataset):
   def __getitem__(self, index):
         'Generates one sample of data'
         # Load data and get label
-        X = {"input_ids": self.input["input_ids"][index], "token_type_ids": self.input["token_type_ids"][index], "attention_mask": self.input["attention_mask"][index]}
+        X = {"input_ids": torch.Tensor(self.input["input_ids"][index]), "token_type_ids": torch.Tensor(self.input["token_type_ids"][index]), "attention_mask": torch.Tensor(self.input["attention_mask"][index])}
         y = self.labels[index]
 
         return X, y
