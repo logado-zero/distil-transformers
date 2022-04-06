@@ -108,7 +108,7 @@ def generate_sequence_data(MAX_SEQUENCE_LENGTH, input_file, tokenizer, label_lis
     with tf.io.gfile.GFile(input_file, "r") as f:
       reader = csv.reader(f, delimiter="\t", quotechar=None)
 
-      for line in tqdm(reader, total=len(reader), leave=False, desc="Generate data from ...{}".format(input_file[-8:])):
+      for line in tqdm(reader, total=len(list(reader)), leave=False, desc="Generate data from ...{}".format(input_file[-8:])):
         if len(line) == 0:
           continue
         x1 = convert_to_unicode(line[0])
