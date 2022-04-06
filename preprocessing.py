@@ -178,12 +178,12 @@ class Dataset(torch.utils.data.Dataset):
 
   def __len__(self):
         'Denotes the total number of samples'
-        return len(self.input)
+        return len(self.input["input_ids"])
 
   def __getitem__(self, index):
         'Generates one sample of data'
         # Load data and get label
-        X = self.input[index]
+        X = {"input_ids": self.input["input_ids"][index], "token_type_ids": self.input["token_type_ids"][index], "attention_mask": self.input["attention_mask"][index]}
         y = self.labels[index]
 
         return X, y
