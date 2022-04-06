@@ -12,7 +12,7 @@ import csv
 import logging
 import numpy as np
 import os
-import tqdm
+from tqdm import tqdm
 import random
 import torch
 from torch.utils.data import DataLoader

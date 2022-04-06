@@ -7,7 +7,7 @@ from collections import defaultdict
 from sklearn.utils import shuffle
 
 import csv
-from tqdm import tqdm
+import tqdm
 import logging
 import numpy as np
 import os
