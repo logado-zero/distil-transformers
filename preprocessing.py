@@ -105,41 +105,44 @@ def generate_sequence_data(MAX_SEQUENCE_LENGTH, input_file, tokenizer, label_lis
     y = []
 
     label_count = defaultdict(int)
-    with tf.io.gfile.GFile(input_file, "r") as f:
-      reader = csv.reader(f, delimiter="\t", quotechar=None)
+    rows = sum(1 for _ in open(input_file, 'r'))
+    with tqdm.auto.tqdm(total=rows, desc="Generate data from ...{}".format(input_file[-12:])) as bar:
+        with tf.io.gfile.GFile(input_file, "r") as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=None)
 
-      for line in tqdm(reader, total=len(list(reader)), leave=False, desc="Generate data from ...{}".format(input_file[-8:])):
-        if len(line) == 0:
-          continue
-        x1 = convert_to_unicode(line[0])
-        if do_pairwise:
-          X2.append(convert_to_unicode(line[1]))
-        if do_NER:
-            if not unlabeled:
-                label = convert_to_unicode(line[1]).split(" ")
-            else:
-                label = ['O']*len(x1.split(" "))
-            x1, label = sequence_process(tokenizer, x1.split(" "), label, special_tokens, MAX_SEQUENCE_LENGTH)
-            x1 = " ".join(x1)
-            if not unlabeled:
-                label = [label_list.index(v) for v in label]
-            else:
-                label = np.zeros(MAX_SEQUENCE_LENGTH)
-        else:
-            if not unlabeled:
+            for line in reader:
+                bar.update()
+                if len(line) == 0:
+                    continue
+                x1 = convert_to_unicode(line[0])
                 if do_pairwise:
-                    label = int(convert_to_unicode(line[2]))
+                    X2.append(convert_to_unicode(line[1]))
+                if do_NER:
+                    if not unlabeled:
+                        label = convert_to_unicode(line[1]).split(" ")
+                    else:
+                        label = ['O']*len(x1.split(" "))
+                    x1, label = sequence_process(tokenizer, x1.split(" "), label, special_tokens, MAX_SEQUENCE_LENGTH)
+                    x1 = " ".join(x1)
+                    if not unlabeled:
+                        label = [label_list.index(v) for v in label]
+                    else:
+                        label = np.zeros(MAX_SEQUENCE_LENGTH)
                 else:
-                    label = int(convert_to_unicode(line[1]))
-            else:
-                label = -1
-        X1.append(x1)
-        y.append(label)
-        if not do_NER:
-            label_count[label] += 1
-        else:
-            for v in label:
-                label_count[v] += 1
+                    if not unlabeled:
+                        if do_pairwise:
+                            label = int(convert_to_unicode(line[2]))
+                        else:
+                            label = int(convert_to_unicode(line[1]))
+                    else:
+                        label = -1
+                X1.append(x1)
+                y.append(label)
+                if not do_NER:
+                    label_count[label] += 1
+                else:
+                    for v in label:
+                        label_count[v] += 1
     
     if do_NER:
         X = {}
