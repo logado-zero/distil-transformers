@@ -148,8 +148,11 @@ if __name__ == '__main__':
             logger.info ("Label: {}".format(y_train[i]))
 
     
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     teacher_model = models.construct_transformer_teacher_model(args, ModelTeacher, teacher_config)
+    teacher_model.to(device)
+
     logger.info(summary(teacher_model,input_size=(768,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
     loss_dict = models.compile_model(teacher_model, args, stage=3)
     optimizer = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
@@ -161,6 +164,6 @@ if __name__ == '__main__':
         teacher_model.load_state_dict(torch.load(model_file))
     else:
         teacher_model = models.train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
-                    batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"])
+                    batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device)
         # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
         torch.save(teacher_model.state_dict(), model_file)

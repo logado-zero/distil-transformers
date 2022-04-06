@@ -178,10 +178,11 @@ def compile_model(model, args, stage):
     return loss_dict
 
 
-def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100):
+def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda"):
     training_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
 
+    
     model.train()
     for epoch in range(epochs):
         epoch_loss = 0
@@ -189,7 +190,8 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
         pr = tqdm(training_generator, total=len(training_generator), leave=False)
         for batch in pr:
             idx += 1
-            outputs = model(batch[0]["input_ids"],batch[0]["attention_mask"],batch[0]["token_type_ids"])
+            input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].to(device), batch[0]["attention_mask"].to(device),batch[0]["token_type_ids"].to(device)
+            outputs = model(input_ids, attention_mask, token_type_ids)
             loss = 0
             for i in range(loss_dict["num"]):
                 loss += loss_dict["loss_name"](outputs, batch[1])
