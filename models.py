@@ -109,7 +109,7 @@ class construct_transformer_teacher_model(torch.nn.Module):
 
         classes = len(args["label_list"])
 
-        self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config, from_pt=True, name="tf_model")
+        self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config)
 
         
     def forward(self, input_ids, attention_mask, token_type_ids):
