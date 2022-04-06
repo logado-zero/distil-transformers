@@ -189,7 +189,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
         pr = tqdm(training_generator, total=len(training_generator), leave=False)
         for batch in pr:
             idx += 1
-            outputs = model(batch[0])
+            outputs = model(batch["input_ids"],batch["attention_mask"],batch["token_type_ids"])
             loss = 0
             for i in range(loss_dict["num"]):
                 loss += loss_dict["loss_name"](outputs, batch[1])
