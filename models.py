@@ -190,11 +190,17 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
         pr = tqdm(training_generator, total=len(training_generator), leave=False)
         for batch in pr:
             idx += 1
-            input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].to(device), batch[0]["attention_mask"].to(device),batch[0]["token_type_ids"].to(device)
+            input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), \
+                                            batch[0]["attention_mask"].type(torch.LongTensor),batch[0]["token_type_ids"].type(torch.LongTensor)
+            true = batch[1].type(torch.LongTensor)
+            
+            input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+            true = true.to(device)
+
             outputs = model(input_ids, attention_mask, token_type_ids)
             loss = 0
             for i in range(loss_dict["num"]):
-                loss += loss_dict["loss_name"](outputs, batch[1])
+                loss += loss_dict["loss_name"](outputs, true)
 
             loss.backward()
             optimizer.step()
