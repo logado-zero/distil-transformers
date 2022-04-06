@@ -7,6 +7,7 @@ from collections import defaultdict
 from sklearn.utils import shuffle
 
 import csv
+from tqdm import tqdm
 import logging
 import numpy as np
 import os
@@ -106,7 +107,8 @@ def generate_sequence_data(MAX_SEQUENCE_LENGTH, input_file, tokenizer, label_lis
     label_count = defaultdict(int)
     with tf.io.gfile.GFile(input_file, "r") as f:
       reader = csv.reader(f, delimiter="\t", quotechar=None)
-      for line in reader:
+
+      for line in tqdm(reader, total=len(reader), leave=False, desc="Generate data from ...{}".format(input_file[-8:])):
         if len(line) == 0:
           continue
         x1 = convert_to_unicode(line[0])
