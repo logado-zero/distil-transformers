@@ -51,6 +51,7 @@ def get_H_t(X):
 #     return torch.nn.NLLLoss(torch.log(torch.nn.functional.softmax(pred)), true)
 
 class SparseCategoricalCrossentropy_torch(torch.nn.Module):
+
     def __init__(self) -> None:
         super(SparseCategoricalCrossentropy_torch, self).__init__()
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -116,7 +117,8 @@ class construct_transformer_teacher_model(torch.nn.Module):
         classes = len(args["label_list"])
 
         self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config)
-
+        self.dropout = torch.nn.Dropout(p=teacher_config.hidden_dropout_prob)
+        self.linear = torch.nn.Linear(768,classes)
         
     def forward(self, input_ids, attention_mask, token_type_ids):
 
