@@ -183,7 +183,7 @@ class Dataset(torch.utils.data.Dataset):
   def __getitem__(self, index):
         'Generates one sample of data'
         # Load data and get label
-        X = self.input [index]
+        X = self.input[index]
         y = self.labels[index]
 
         return X, y
