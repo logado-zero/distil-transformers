@@ -56,7 +56,7 @@ class SparseCategoricalCrossentropy_torch(torch.nn.Module):
         super(SparseCategoricalCrossentropy_torch, self).__init__()
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         loss = torch.nn.NLLLoss()
-        return loss(torch.log(torch.nn.functional.softmax(input)), target)
+        return loss(torch.log(torch.nn.functional.softmax(input.transpose(1, 2))), target)
 
 
 class construct_transformer_teacher_model(torch.nn.Module):
@@ -120,6 +120,7 @@ class construct_transformer_teacher_model(torch.nn.Module):
         self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config)
         self.dropout = torch.nn.Dropout(p=teacher_config.hidden_dropout_prob)
         self.linear = torch.nn.Linear(768,classes)
+        logger.info(self.teacher_config)
         
     def forward(self, input_ids, attention_mask, token_type_ids):
 
@@ -147,8 +148,6 @@ class construct_transformer_teacher_model(torch.nn.Module):
                 embedding.append(encode[0])
             else:
                 embedding.append(encode[0][:,0])
-
-        logger.info(self.teacher_config)
 
         dropout = self.dropout(embedding[0])
         output = self.linear(dropout)
@@ -204,7 +203,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
                 loss += loss_dict["loss_name"](outputs, true)
             else:
                 for i in range(loss_dict["num"]):
-                    loss += loss_dict["loss_name"](outputs[i], true)
+                    loss += loss_dict["loss_name"](outputs[i], true[i])
 
             loss.backward()
             optimizer.step()
