@@ -197,10 +197,13 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
             input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
             true = true.to(device)
 
-            outputs = model(input_ids, attention_mask, token_type_ids)
+            outputs,_ = model(input_ids, attention_mask, token_type_ids)
             loss = 0
-            for i in range(loss_dict["num"]):
+            if loss_dict["num"] == 1:
                 loss += loss_dict["loss_name"](outputs, true)
+            else:
+                for i in range(loss_dict["num"]):
+                    loss += loss_dict["loss_name"](outputs[i], true)
 
             loss.backward()
             optimizer.step()
