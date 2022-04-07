@@ -157,13 +157,13 @@ if __name__ == '__main__':
     loss_dict = models.compile_model(teacher_model, args, stage=3)
     optimizer = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
     
-    model_file = os.path.join(args["teacher_model_dir"], 'model_weights.pth')
+    model_file = os.path.join(args["teacher_model_dir"], 'teacher_weights.pth')
 
     if os.path.exists(model_file):
         logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
         teacher_model.load_state_dict(torch.load(model_file))
     else:
         teacher_model = models.train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
-                    batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device)
+                    batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  os.path.join(args["teacher_model_dir"], 'teacher_weights_best.pth'))
         # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
         torch.save(teacher_model.state_dict(), model_file)

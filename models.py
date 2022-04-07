@@ -177,14 +177,47 @@ def compile_model(model, args, stage):
         
     return loss_dict
 
+def validation(model, device, valid_loader, loss_function):
 
-def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda"):
+    model.eval()
+    loss_total = 0
+
+    # Test validation data
+    with torch.no_grad():
+        pr = tqdm(valid_loader, total=len(valid_loader), leave=False,desc="Validate ....")
+        for batch in pr:
+            
+            input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), \
+                                            batch[0]["attention_mask"].type(torch.LongTensor),batch[0]["token_type_ids"].type(torch.LongTensor)
+            true = batch[1].type(torch.LongTensor)
+            
+            input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+            true = true.to(device)
+
+            outputs, _ = model(input_ids, attention_mask, token_type_ids)
+            loss = 0
+            if loss_function["num"] == 1:
+              loss += loss_function["loss_name"](outputs, true)
+            else:
+              for i in range(loss_function["num"]):
+                
+                loss += loss_function["loss_name"](outputs[i], true[i])
+            loss_total += loss
+
+    return loss_total / len(valid_loader)
+
+
+def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda", path_save="./teacher_weights.pth"):
     training_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
 
-    
-    model.train()
+    # Early stopping
+    last_loss = 1000
+    patience = 2
+    triggertimes = 0
+
     for epoch in range(epochs):
+        model.train()
         epoch_loss = 0
         idx = 0
         pr = tqdm(training_generator, total=len(training_generator), leave=False)
@@ -212,7 +245,25 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
             epoch_loss += loss
             pr.set_description("train loss: {}".format(epoch_loss / idx))
             torch.cuda.empty_cache()
-        logging.info("\nepoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
+
+        logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
+
+        # Early stopping
+        current_loss = validation(model, device, validation_generator, loss_dict)
+        print('The Current Loss:', current_loss)
+
+        if current_loss > last_loss:
+            trigger_times += 1
+            torch.save(model.state_dict(), path_save)
+            if trigger_times >= patience:
+                print('Early stopping!\nStart to test process.')
+                return model
+
+        else:
+            print('trigger times: 0')
+            trigger_times = 0
+
+        last_loss = current_loss
     
 
     return model
