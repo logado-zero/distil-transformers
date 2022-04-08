@@ -1,3 +1,4 @@
+from evaluation import train_model, ner_evaluate
 from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices
 from preprocessing import generate_sequence_data, get_labels, Dataset
 from transformers import *
@@ -163,7 +164,13 @@ if __name__ == '__main__':
         logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
         teacher_model.load_state_dict(torch.load(model_file))
     else:
-        teacher_model = models.train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
+        teacher_model = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
                     batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  os.path.join(args["teacher_model_dir"], 'teacher_weights_best.pth'))
         # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
         torch.save(teacher_model.state_dict(), model_file)
+
+
+    if args["do_NER"]:
+        ner_evaluate(teacher_model, X_test, y_test, label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"]*gpus)
+    else:
+        logger.info("Teacher model accuracy {}".format(teacher_model.evaluate(X_test, y_test, batch_size=args["teacher_batch_size"]*gpus)))
