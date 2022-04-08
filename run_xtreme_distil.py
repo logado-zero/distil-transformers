@@ -170,7 +170,6 @@ if __name__ == '__main__':
         torch.save(teacher_model.state_dict(), model_file)
 
 
-    if args["do_NER"]:
-        ner_evaluate(teacher_model, X_test, y_test, label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"]*gpus)
-    else:
-        logger.info("Teacher model accuracy {}".format(teacher_model.evaluate(X_test, y_test, batch_size=args["teacher_batch_size"]*gpus)))
+   
+    ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"])
+    
