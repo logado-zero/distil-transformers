@@ -254,7 +254,6 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
 
         if current_loss > last_loss:
             trigger_times += 1
-            torch.save(model.state_dict(), path_save)
             if trigger_times >= patience:
                 print('Early stopping!\nStart to test process.')
                 return model
@@ -262,8 +261,11 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
         else:
             print('trigger times: 0')
             trigger_times = 0
+            torch.save(model.state_dict(), path_save)
+            print("Save best model ----> ", path_save)
 
         last_loss = current_loss
+        
     
 
     return model
