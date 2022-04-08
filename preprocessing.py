@@ -171,11 +171,11 @@ def generate_sequence_data(MAX_SEQUENCE_LENGTH, input_file, tokenizer, label_lis
 
 
 class Dataset(torch.utils.data.Dataset):
-  def __init__(self, input, labels, num_tags):
+  def __init__(self, input, labels):
         'Initialization'
         self.labels = labels
         self.input = input
-        self.num_tags = num_tags
+        
 
   def __len__(self):
         'Denotes the total number of samples'
@@ -185,6 +185,5 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Load data and get label
         X = {"input_ids": torch.Tensor(self.input["input_ids"][index]), "token_type_ids": torch.Tensor(self.input["token_type_ids"][index]), "attention_mask": torch.Tensor(self.input["attention_mask"][index])}
-        # y = torch.Tensor([[0 if i!=tag else 1 for i in range(self.num_tags)] for tag in self.labels[index]])
         y = torch.Tensor(self.labels[index])
         return X, y
