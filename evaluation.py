@@ -107,10 +107,10 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
 
 
 
-def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32):
+def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32, device="cuda"):
 
     test_generator = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    model.to(device)
     model.eval()    
 
     for batch in tqdm(test_generator, total=len(test_generator), leave=False, desc="Predicting"):
@@ -118,8 +118,8 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
                                                     batch[0]["token_type_ids"].type(torch.LongTensor)
         true = batch[1].type(torch.LongTensor)
         
-        input_ids, attention_mask, token_type_ids = input_ids.to('cpu'), attention_mask.to('cpu'), token_type_ids.to('cpu')
-        true = true.to('cpu')
+        input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+        true = true.to(device)
 
         outputs,_ = model.forward(input_ids, attention_mask, token_type_ids)
         pred_tags_all = []
