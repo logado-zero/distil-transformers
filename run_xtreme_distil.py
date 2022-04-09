@@ -171,5 +171,5 @@ if __name__ == '__main__':
 
 
    
-    ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"])
+    ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"], device =device)
     
