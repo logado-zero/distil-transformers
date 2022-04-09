@@ -132,7 +132,7 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
                     continue
 
                 true_tags_all.append(true_label)
-                indx = np.argmax(seq[j])
+                indx = torch.argmax(seq[j])
                 pred_label = labels[indx]
                 pred_tags_all.append(pred_label)
 
