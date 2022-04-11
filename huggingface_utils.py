@@ -32,7 +32,7 @@ def get_word_embedding(encoder, pt_tokenizer, hidden_size):
 	with torch.no_grad():
 	#get word embedding matrix from teacher
 		if encoder.base_model_prefix in ['bert','transformer','distilbert','roberta','electra']:
-			word_embedding_matrix = encoder.bert.embeddings.word_embeddings.weight.cpu().numpy()
+			word_embedding_matrix = encoder.embeddings.word_embeddings.weight.cpu().numpy()
 		else:
 			logger.info("Base model not supported. Initializing word embedding with random matrix")
 			word_embedding_matrix = np.random.uniform(size=(len(pt_tokenizer.get_vocab()), hidden_size))
