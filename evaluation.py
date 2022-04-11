@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm 
 import torch
 from torch.utils.data import DataLoader
+from torch.cuda.amp import autocast, GradScaler
 
 logger = logging.getLogger('xtremedistil')
 
@@ -42,7 +43,9 @@ def validation(model, device, valid_loader, loss_function):
     return loss_total / len(valid_loader)
 
 
-def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda", path_save="./teacher_weights.pth"):
+def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda",\
+     path_save="./teacher_weights.pth", opt_policy = False):
+
     training_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
 
@@ -50,6 +53,9 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
     last_loss = 1000
     patience = 10
     triggertimes = 0
+    #Set up mixed precision
+    if opt_policy:
+        scaler = GradScaler()
 
     for epoch in range(epochs):
         model.train()
@@ -65,16 +71,31 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
             input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
             true = true.to(device)
 
-            outputs,_ = model(input_ids, attention_mask, token_type_ids)
-            loss = 0
-            if loss_dict["num"] == 1:
-                loss += loss_dict["loss_name"](outputs, true)
+            if opt_policy:
+                with autocast():
+                    outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                    loss = 0
+                    if loss_dict["num"] == 1:
+                        loss += loss_dict["loss_name"](outputs, true)
+                    else:
+                        for i in range(loss_dict["num"]):
+                            loss += loss_dict["loss_name"](outputs[i], true[i])
+                    
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
             else:
-                for i in range(loss_dict["num"]):
-                    loss += loss_dict["loss_name"](outputs[i], true[i])
+                outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                loss = 0
+                if loss_dict["num"] == 1:
+                    loss += loss_dict["loss_name"](outputs, true)
+                else:
+                    for i in range(loss_dict["num"]):
+                        loss += loss_dict["loss_name"](outputs[i], true[i])
 
-            loss.backward()
-            optimizer.step()
+                loss.backward()
+                optimizer.step()
+
             optimizer.zero_grad()
             loss = loss.data.cpu().tolist()
             epoch_loss += loss
