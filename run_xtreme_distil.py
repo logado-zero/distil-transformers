@@ -1,5 +1,5 @@
 from evaluation import train_model, ner_evaluate
-from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices
+from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices, get_word_embedding
 from preprocessing import generate_sequence_data, get_labels, Dataset
 from transformers import *
 
@@ -172,4 +172,6 @@ if __name__ == '__main__':
 
    
     ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"], device =device)
-    
+    word_emb = None
+    if args["compress_word_embedding"]:
+        word_emb = get_word_embedding(teacher_model._modules.get('encoder'), pt_tokenizer, args["hidden_size"])

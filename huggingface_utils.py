@@ -8,6 +8,7 @@ from transformers import *
 
 import logging
 import numpy as np
+import torch
 
 logger = logging.getLogger('xtremedistil')
 
@@ -28,29 +29,21 @@ MODELS = [(BertModel, BertTokenizerFast, BertConfig),
          ]
 
 def get_word_embedding(encoder, pt_tokenizer, hidden_size):
-
+	with torch.no_grad():
 	#get word embedding matrix from teacher
-	if encoder.base_model_prefix == 'bert':
-		word_embedding_matrix = encoder.bert.embeddings.word_embeddings.numpy()
-	elif encoder.base_model_prefix == 'transformer':
-		word_embedding_matrix = encoder.transformer.embeddings.word_embeddings.numpy()
-	elif encoder.base_model_prefix == 'distilbert':
-		word_embedding_matrix = encoder.distilbert.embeddings.word_embeddings.numpy()
-	elif encoder.base_model_prefix == 'roberta':
-		word_embedding_matrix = encoder.roberta.embeddings.word_embeddings.numpy()
-	elif encoder.base_model_prefix == 'electra':
-		word_embedding_matrix = encoder.electra.embeddings.word_embeddings.numpy()
-	else:
-		logger.info("Base model not supported. Initializing word embedding with random matrix")
-		word_embedding_matrix = np.random.uniform(size=(len(pt_tokenizer.get_vocab()), hidden_size))
-	logger.info (word_embedding_matrix.shape)
-	#embedding factorization to reduce embedding dimension
-	if word_embedding_matrix.shape[1] > hidden_size:
-		pca =  PCA(n_components = hidden_size)
-		word_embedding_matrix = pca.fit_transform(word_embedding_matrix)
-		logger.info(" Word embedding matrix compressed to {}".format(word_embedding_matrix.shape))
+		if encoder.base_model_prefix in ['bert','transformer','distilbert','roberta','electra']:
+			word_embedding_matrix = encoder.bert.embeddings.word_embeddings.weight.cpu().numpy()
+		else:
+			logger.info("Base model not supported. Initializing word embedding with random matrix")
+			word_embedding_matrix = np.random.uniform(size=(len(pt_tokenizer.get_vocab()), hidden_size))
+		logger.info (word_embedding_matrix.shape)
+		#embedding factorization to reduce embedding dimension
+		if word_embedding_matrix.shape[1] > hidden_size:
+			pca =  PCA(n_components = hidden_size)
+			word_embedding_matrix = pca.fit_transform(word_embedding_matrix)
+			logger.info(" Word embedding matrix compressed to {}".format(word_embedding_matrix.shape))
 
-	return word_embedding_matrix
+		return word_embedding_matrix
 
 
 def get_special_tokens_from_teacher(Tokenizer, pt_tokenizer):
