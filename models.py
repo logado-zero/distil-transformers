@@ -135,18 +135,22 @@ class construct_transformer_student_model(torch.nn.Module):
 
         logger.info(student_config)
 
-        self.layers = torch.nn.ModuleList()
+        self.hidden_linear = torch.nn.ModuleList()
+        self.hidden_dropout = torch.nn.ModuleList()
         if self.args["teacher_hidden_size"] > self.args["hidden_size"]:
             if self.args["distil_multi_hidden_states"]:
                 for i in range(args["num_hidden_layers"]+1):
-                    self.layers.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
+                    self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
                     if i == 0:
-                        self.layers.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
-                        torch.nn.init.trunc_normal_(self.layers[-1].weight, std= student_config.initializer_range)
+                        self.hidden_linear.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
+                        torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
                     else:
-                        self.layers.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
-                        torch.nn.init.trunc_normal_(self.layers[-1].weight, std= student_config.initializer_range)
-
+                        self.hidden_linear.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
+                        torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+            else:
+                self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
+                self.hidden_linear.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
+                torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
                     
     def forward(self, input_ids, attention_mask, token_type_ids):
         encode = self.student_encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
@@ -171,7 +175,11 @@ class construct_transformer_student_model(torch.nn.Module):
                 embedding.append(encode[0])
             else:
                 embedding.append(encode[0][:,0])
-
+        if self.args["teacher_hidden_size"] > args["hidden_size"]:
+            if self.args["distil_multi_hidden_states"]:
+                embedding = [self.hidden_linear[i](self.hidden_dropout[i](embedding[i])) if (i < self.args["num_hidden_layers"]+1) else embedding[i] for i in range(len(embedding))]
+            else:
+                embedding = [Dense(args["teacher_hidden_size"], name="dense_{}".format(stage), kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=student_config.initializer_range))(Dropout(student_config.hidden_dropout_prob)(embedding[0]))]
         return embedding
 
 
