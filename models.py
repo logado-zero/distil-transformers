@@ -119,10 +119,10 @@ class construct_transformer_student_model(torch.nn.Module):
         #construct student models for different stages
         if args["pt_student_checkpoint"]:
             student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-            self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config, name="student_{}".format(stage))
+            self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
         else:
             student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-            self.student_encoder = BertModel(config=student_config, name="student_{}".format(stage))
+            self.student_encoder = BertModel(config=student_config)
 
         
 
@@ -138,9 +138,10 @@ class construct_transformer_student_model(torch.nn.Module):
         self.layers = torch.nn.ModuleList()
         if self.args["teacher_hidden_size"] > self.args["hidden_size"]:
             if self.args["distil_multi_hidden_states"]:
-                 self.layers.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
-                 if i == 0:
-                     self.layers.append(torch.nn.Linear)
+                for i in range(args["num_hidden_layers"]+1):
+                    self.layers.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
+                    if i == 0:
+                        self.layers.append(torch.nn.Linear)
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         encode = self.student_encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
