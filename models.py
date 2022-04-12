@@ -141,8 +141,13 @@ class construct_transformer_student_model(torch.nn.Module):
                 for i in range(args["num_hidden_layers"]+1):
                     self.layers.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
                     if i == 0:
-                        self.layers.append(torch.nn.Linear)
+                        self.layers.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
+                        torch.nn.init.trunc_normal_(self.layers[-1].weight, std= student_config.initializer_range)
+                    else:
+                        self.layers.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
+                        torch.nn.init.trunc_normal_(self.layers[-1].weight, std= student_config.initializer_range)
 
+                    
     def forward(self, input_ids, attention_mask, token_type_ids):
         encode = self.student_encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
 
