@@ -179,7 +179,8 @@ class construct_transformer_student_model(torch.nn.Module):
             if self.args["distil_multi_hidden_states"]:
                 embedding = [self.hidden_linear[i](self.hidden_dropout[i](embedding[i])) if (i < self.args["num_hidden_layers"]+1) else embedding[i] for i in range(len(embedding))]
             else:
-                embedding = [Dense(args["teacher_hidden_size"], name="dense_{}".format(stage), kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=student_config.initializer_range))(Dropout(student_config.hidden_dropout_prob)(embedding[0]))]
+                embedding = [self.hidden_linear[0](self.hidden_dropout[0](embedding[0]))]
+                
         return embedding
 
 
