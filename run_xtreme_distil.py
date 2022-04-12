@@ -175,3 +175,5 @@ if __name__ == '__main__':
     word_emb = None
     if args["compress_word_embedding"]:
         word_emb = get_word_embedding(teacher_model._modules.get('encoder'), pt_tokenizer, args["hidden_size"])
+
+    
