@@ -176,4 +176,8 @@ if __name__ == '__main__':
     if args["compress_word_embedding"]:
         word_emb = get_word_embedding(teacher_model._modules.get('encoder'), pt_tokenizer, args["hidden_size"])
 
+
+    model_1 = models.construct_transformer_student_model(args, stage=1, word_emb=word_emb)
+    model_2 = models.construct_transformer_student_model(args, stage=2, word_emb=word_emb)
+    
     

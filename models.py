@@ -150,7 +150,11 @@ class construct_transformer_student_model(torch.nn.Module):
             else:
                 self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
                 self.hidden_linear.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
-                torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+                torch.nn.init.trunc_normal_(self.hidden_linear[0].weight, std= student_config.initializer_range)
+
+        self.last_dropout = torch.nn.Dropout(p=student_config.hidden_dropout_prob)
+        self.last_linear = torch.nn.Linear(args["teacher_hidden_size"],classes)
+        torch.nn.init.trunc_normal_(self.last_linear.weight, std= student_config.initializer_range)
                     
     def forward(self, input_ids, attention_mask, token_type_ids):
         encode = self.student_encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
@@ -175,13 +179,19 @@ class construct_transformer_student_model(torch.nn.Module):
                 embedding.append(encode[0])
             else:
                 embedding.append(encode[0][:,0])
-        if self.args["teacher_hidden_size"] > args["hidden_size"]:
+
+        if self.args["teacher_hidden_size"] > self.args["hidden_size"]:
             if self.args["distil_multi_hidden_states"]:
                 embedding = [self.hidden_linear[i](self.hidden_dropout[i](embedding[i])) if (i < self.args["num_hidden_layers"]+1) else embedding[i] for i in range(len(embedding))]
             else:
                 embedding = [self.hidden_linear[0](self.hidden_dropout[0](embedding[0]))]
-                
-        return embedding
+
+        if self.stage == 1:
+            return embedding
+        else:
+            outputs = self.last_dropout(embedding[0])
+            logits = self.last_linear(outputs)
+            return logits
 
 
 def compile_model(model, args, stage):
