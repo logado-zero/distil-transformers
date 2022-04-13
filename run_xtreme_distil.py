@@ -1,4 +1,4 @@
-from evaluation import train_model, ner_evaluate
+from evaluation import train_model, ner_evaluate, load_history_file, save_history_file
 from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices, get_word_embedding
 from preprocessing import generate_sequence_data, get_labels, Dataset
 from transformers import *
@@ -13,6 +13,7 @@ import random
 import sys
 import torch
 from torchsummary import summary
+from tqdm import tqdm
 
 
 
@@ -177,8 +178,8 @@ if __name__ == '__main__':
         word_emb = get_word_embedding(teacher_model._modules.get('encoder'), pt_tokenizer, args["hidden_size"])
 
 
-    model_1 = models.construct_transformer_student_model(args, stage=1, word_emb=word_emb)
-    model_2 = models.construct_transformer_student_model(args, stage=2, word_emb=word_emb)
+    model_1 = models.construct_transformer_student_model(args, word_emb=word_emb)
+   
     
     shared_layers = set()
     for name, param in model_1.named_parameters():
@@ -186,3 +187,112 @@ if __name__ == '__main__':
             shared_layers.add(name.split(".")[0])
     shared_layers = list(shared_layers)
     logger.info ("Shared layers {}".format(shared_layers))
+
+    best_model = None
+    best_eval = 0
+    min_loss = np.inf
+    min_ckpt = None
+
+    for stage in range(1, 2*len(shared_layers)+4):
+
+        logger.info ("*** Starting stage {}".format(stage))
+        patience_counter = 0
+
+        #stage = 1, optimize representation loss (transfer set) with end-to-end training
+        #stage = 2, copy model from stage = 1, and optimize logit loss (transfer set) with all but last layer frozen
+        #stage = [3, 4, .., 2+num_shared_layers], optimize logit loss (transfer set) with gradual unfreezing
+        #stage == 3+num_shared_layers, optimize CE loss (labeled data) with all but last layer frozen
+        #stage = [4+num_shared_layers, ...], optimize CE loss (labeled data)with gradual unfreezing
+        if stage == 2:
+            #copy weights from model_stage_1
+            logger.info ("Copying weights from model stage 1")
+            for name, param in model_1.named_parameters():
+                if name.split(".")[0] in shared_layers:
+                    param.requires_grad = False
+            loss_dict1 = models.compile_model(model_1, args, stage=2)
+            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            #resetting min loss
+            min_loss = np.inf
+
+        elif stage > 2 and stage < 3+len(shared_layers):
+            logger.info ("Unfreezing layer {}".format(shared_layers[stage-3]))
+            for name, param in model_1.named_parameters():
+                if name.split(".")[0] == shared_layers[stage-3]:
+                    param.requires_grad = True
+            loss_dict1 = models.compile_model(model_1, args, stage=3)
+            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+
+        elif stage == 3+len(shared_layers):
+            for name, param in model_1.named_parameters():
+                if name.split(".")[0] in shared_layers:
+                    param.requires_grad = False
+            loss_dict1 = models.compile_model(model_1, args, stage=3)
+            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            #resetting min loss
+            min_loss = np.inf
+
+        elif stage > 3+len(shared_layers):
+            logger.info ("Unfreezing layer {}".format(shared_layers[stage-4-len(shared_layers)]))
+            for name, param in model_1.named_parameters():
+                if name.split(".")[0] == shared_layers[stage-4-len(shared_layers)]:
+                    param.requires_grad = True
+            loss_dict1 = models.compile_model(model_1, args, stage=3)
+            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+
+        start_teacher = 0
+
+        while start_teacher < len(X_unlabeled["input_ids"]) and stage < 3+len(shared_layers):
+
+            end_teacher = min(start_teacher + args["distil_chunk_size"], len(X_unlabeled["input_ids"]))
+            logger.info("Teacher indices from {} to {}".format(start_teacher, end_teacher))
+
+            #get teacher logits
+            input_data_chunk = {"input_ids": X_unlabeled["input_ids"][start_teacher:end_teacher], "attention_mask": X_unlabeled["attention_mask"][start_teacher:end_teacher], "token_type_ids": X_unlabeled["token_type_ids"][start_teacher:end_teacher]}
+            unlabel_dataset = Dataset(input_data_chunk,None)
+            unlabel_generator = torch.utils.data.DataLoader(unlabel_dataset, batch_size=args["teacher_batch_size"], shuffle=False)
+            teacher_model.to(device)
+            teacher_model.eval() 
+            output_teacher = []
+            for batch in tqdm(unlabel_generator, total=len(unlabel_generator), leave=False, desc="Predicting Teacher Model for unlabel dataset"):
+                input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), batch[0]["attention_mask"].type(torch.LongTensor),\
+                                                            batch[0]["token_type_ids"].type(torch.LongTensor)
+                
+                
+                input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+
+                if stage == 1:
+                    _, outputs = model.forward(input_ids, attention_mask, token_type_ids)
+                else:  outputs, _ = model.forward(input_ids, attention_mask, token_type_ids)
+
+                output_teacher.append(outputs)
+
+
+            model_file = os.path.join(args["model_dir"], "model_stage_{}_indx_{}.pth".format(stage, start_teacher))
+            history_file = os.path.join(args["model_dir"], "model_stage_{}_indx_{}_history.txt".format(stage, start_teacher))
+            ###################################################
+            if stage == 1:
+                if os.path.exists(model_file):
+                    logger.info ("Loadings weights for stage {} from {}".format(stage, model_file))
+                    model_1.load_state_dict(torch.load(model_file))
+                    history = load_history_file(history_file)
+                else:
+                    logger.info(summary(model_1,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+
+                #     model_history = model_1.fit(input_data_chunk, y_layer_teacher, shuffle=True, batch_size=args["student_distil_batch_size"]*gpus, verbose=2, epochs=args["distil_epochs"], callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=args["patience"], restore_best_weights=True)], validation_split=0.1)
+                #     history = model_history.history
+                #     model_1.save_weights(model_file)
+                #     json.dump(history, open(history_file, 'w'))
+
+                # val_loss = history['val_loss']
+                # if  val_loss < min_loss:
+                #     min_loss = val_loss
+                #     min_ckpt = model_1.get_weights()
+                #     logger.info ("Checkpointing model weights with minimum validation loss {}".format(min_loss))
+                #     patience_counter = 0
+                # else:
+                #     patience_counter += 1
+                #     logger.info ("Resetting model to best weights found so far corresponding to val_loss {}".format(min_loss))
+                #     model_1.set_weights(min_ckpt)
+                #     if patience_counter == args["patience"]:
+                #         logger.info("Early stopping")
+                #         break

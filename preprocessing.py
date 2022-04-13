@@ -185,5 +185,8 @@ class Dataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         # Load data and get label
         X = {"input_ids": torch.Tensor(self.input["input_ids"][index]), "token_type_ids": torch.Tensor(self.input["token_type_ids"][index]), "attention_mask": torch.Tensor(self.input["attention_mask"][index])}
-        y = torch.Tensor(self.labels[index])
-        return X, y
+        if y is not None:
+            y = torch.Tensor(self.labels[index])
+            return X, y
+        else:
+            return X

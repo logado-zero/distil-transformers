@@ -108,9 +108,8 @@ class construct_transformer_teacher_model(torch.nn.Module):
         return output, embedding
 
 class construct_transformer_student_model(torch.nn.Module):
-    def __init__(self, args, stage, word_emb=None):
+    def __init__(self, args, word_emb=None):
         super(construct_transformer_student_model, self).__init__()
-        self.stage = stage
         self.word_emb = word_emb
         self.args = args
 
@@ -151,12 +150,12 @@ class construct_transformer_student_model(torch.nn.Module):
                 self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
                 self.hidden_linear.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
                 torch.nn.init.trunc_normal_(self.hidden_linear[0].weight, std= student_config.initializer_range)
-        if self.stage != 1:
-            self.last_dropout = torch.nn.Dropout(p=student_config.hidden_dropout_prob)
-            self.last_linear = torch.nn.Linear(args["teacher_hidden_size"],classes)
-            torch.nn.init.trunc_normal_(self.last_linear.weight, std= student_config.initializer_range)
+        
+        self.last_dropout = torch.nn.Dropout(p=student_config.hidden_dropout_prob)
+        self.last_linear = torch.nn.Linear(args["teacher_hidden_size"],classes)
+        torch.nn.init.trunc_normal_(self.last_linear.weight, std= student_config.initializer_range)
                     
-    def forward(self, input_ids, attention_mask, token_type_ids):
+    def forward(self, input_ids, attention_mask, token_type_ids, stage):
         encode = self.student_encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
 
         output_hidden_state_indx, output_attention_state_indx =  get_output_state_indices(BertModel)
@@ -186,7 +185,7 @@ class construct_transformer_student_model(torch.nn.Module):
             else:
                 embedding = [self.hidden_linear[0](self.hidden_dropout[0](embedding[0]))]
 
-        if self.stage == 1:
+        if stage == 1:
             return embedding
         else:
             outputs = self.last_dropout(embedding[0])

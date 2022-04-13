@@ -3,6 +3,7 @@ Author: Subho Mukherjee (submukhe@microsoft.com)
 Code for XtremeDistil for distilling massive multi-lingual models.
 """
 
+from sklearn.decomposition import dict_learning_online
 import conlleval
 import logging
 import numpy as np
@@ -133,7 +134,8 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
     test_generator = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.to(device)
     model.eval()    
-
+    pred_tags_all = []
+    true_tags_all = []
     for batch in tqdm(test_generator, total=len(test_generator), leave=False, desc="Predicting"):
         input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), batch[0]["attention_mask"].type(torch.LongTensor),\
                                                     batch[0]["token_type_ids"].type(torch.LongTensor)
@@ -143,8 +145,7 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
         true = true.to(device)
 
         outputs,_ = model.forward(input_ids, attention_mask, token_type_ids)
-        pred_tags_all = []
-        true_tags_all = []
+        
         for i, seq in enumerate(outputs):
             for j in range(MAX_SEQUENCE_LENGTH):
                 indx = true[i][j]
@@ -163,3 +164,23 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
     logger.info ("Test scores {} {} {}".format(prec, rec, f1))
 
     return np.mean(f1)
+
+def load_history_file(path: str):
+    with open(path, 'r') as f:
+        file_read = f.readlines()
+    history = {}
+    for i in file_read:
+        line = i.strip().slpit(": ")
+        x = {str(line[0]):line[1]}
+        history.update(x)
+
+    return history
+
+def save_history_file(path: str, history: dict):
+    f = open(path,"w")
+    for key in history.keys():
+        f.write(str(key)+ ": "+str(history.get(key))+"\n")
+
+    f.close()
+
+
