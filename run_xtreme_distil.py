@@ -180,4 +180,9 @@ if __name__ == '__main__':
     model_1 = models.construct_transformer_student_model(args, stage=1, word_emb=word_emb)
     model_2 = models.construct_transformer_student_model(args, stage=2, word_emb=word_emb)
     
-    
+    shared_layers = set()
+    for name, param in model_1.named_parameters():
+        if param.requires_grad:
+            shared_layers.add(name.split(".")[0])
+    shared_layers = list(shared_layers)
+    logger.info ("Shared layers {}".format(shared_layers))
