@@ -140,15 +140,18 @@ class construct_transformer_student_model(torch.nn.Module):
             if self.args["distil_multi_hidden_states"]:
                 for i in range(args["num_hidden_layers"]+1):
                     self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
-                    if i == 0:
-                        self.hidden_linear.append(torch.nn.Linear(384,args["teacher_hidden_size"]))
-                        torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
-                    else:
-                        self.hidden_linear.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
-                        torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+
+                    self.hidden_linear.append(torch.nn.Linear(384,args["teacher_hidden_size"]))
+                    torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+                    # if i == 0:
+                    #     self.hidden_linear.append(torch.nn.Linear(384,args["teacher_hidden_size"]))
+                    #     torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+                    # else:
+                    #     self.hidden_linear.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
+                    #     torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
             else:
                 self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
-                self.hidden_linear.append(torch.nn.Linear(348,args["teacher_hidden_size"]))
+                self.hidden_linear.append(torch.nn.Linear(84,args["teacher_hidden_size"]))
                 torch.nn.init.trunc_normal_(self.hidden_linear[0].weight, std= student_config.initializer_range)
         
         self.last_dropout = torch.nn.Dropout(p=student_config.hidden_dropout_prob)
