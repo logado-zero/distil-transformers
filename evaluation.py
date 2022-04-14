@@ -246,7 +246,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
             trigger_times += 1
             if trigger_times >= patience:
                 print('Early stopping!\nStart to test process.')
-                return student_model
+                return student_model, last_loss
 
         else:
             print('trigger times: 0')
