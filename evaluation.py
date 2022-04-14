@@ -172,6 +172,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
 
     teacher_model.to(device)
+    student_model.to(device)
     teacher_model.eval() 
 
     # Early stopping
