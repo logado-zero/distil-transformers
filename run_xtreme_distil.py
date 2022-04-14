@@ -174,7 +174,8 @@ if __name__ == '__main__':
 
 
     model_1 = models.construct_transformer_student_model(args, word_emb=word_emb)
-   
+    loss_dict1 = models.compile_model(model_1, args, stage=1)
+    optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
     
     shared_layers = set()
     for name, param in model_1.named_parameters():
@@ -205,7 +206,7 @@ if __name__ == '__main__':
                 if name.split(".")[0] in shared_layers:
                     param.requires_grad = False
             loss_dict1 = models.compile_model(model_1, args, stage=2)
-            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
             #resetting min loss
             min_loss = np.inf
 
@@ -215,14 +216,14 @@ if __name__ == '__main__':
                 if name.split(".")[0] == shared_layers[stage-3]:
                     param.requires_grad = True
             loss_dict1 = models.compile_model(model_1, args, stage=3)
-            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
 
         elif stage == 3+len(shared_layers):
             for name, param in model_1.named_parameters():
                 if name.split(".")[0] in shared_layers:
                     param.requires_grad = False
             loss_dict1 = models.compile_model(model_1, args, stage=3)
-            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
             #resetting min loss
             min_loss = np.inf
 
@@ -232,7 +233,7 @@ if __name__ == '__main__':
                 if name.split(".")[0] == shared_layers[stage-4-len(shared_layers)]:
                     param.requires_grad = True
             loss_dict1 = models.compile_model(model_1, args, stage=3)
-            optimizer1 = torch.optim.Adam(teacher_model.parameters(),lr=3e-5, eps=1e-08)
+            optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
 
         start_teacher = 0
 
