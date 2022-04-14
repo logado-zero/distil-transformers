@@ -1,4 +1,4 @@
-from evaluation import train_model, ner_evaluate, load_history_file, save_history_file
+from evaluation import train_model, ner_evaluate, load_history_file, save_history_file, train_model_student
 from huggingface_utils import MODELS, get_special_tokens_from_teacher, get_output_state_indices, get_word_embedding
 from preprocessing import generate_sequence_data, get_labels, Dataset
 from transformers import *
@@ -109,9 +109,8 @@ if __name__ == '__main__':
         args["compress_word_embedding"] = True
 
     #get labels for NER
-    label_list=None
-    if args["do_NER"]:
-        label_list = get_labels(os.path.join(args["task"], "labels.tsv"), special_tokens)
+    
+    label_list = get_labels(os.path.join(args["task"], "labels.tsv"), special_tokens)
 
     #generate sequence data for fine-tuning pre-trained teacher
     X_train, y_train = generate_sequence_data(args["seq_len"], os.path.join(args["task"], "train.tsv"), pt_tokenizer, label_list=label_list, special_tokens=special_tokens, do_pairwise=args["do_pairwise"], do_NER=args["do_NER"])
@@ -127,9 +126,6 @@ if __name__ == '__main__':
     test_dataset = Dataset(X_test,y_test)
     dev_dataset = Dataset(X_dev,y_dev)
 
-    if not args["do_NER"]:
-        label_list = [str(elem) for elem in set(y_train)]
-
     args["label_list"] = label_list
 
     #logging teacher data shapes
@@ -144,10 +140,9 @@ if __name__ == '__main__':
         logger.info ("Input ids: {}".format(X_train["input_ids"][i]))
         logger.info ("Attention mask: {}".format(X_train["attention_mask"][i]))
         logger.info ("Token type ids: {}".format(X_train["token_type_ids"][i]))
-        if args["do_NER"]:
-            logger.info ("Label sequence: {}".format(' '.join([label_list[v] for v in y_train[i]])))
-        else:
-            logger.info ("Label: {}".format(y_train[i]))
+        
+        logger.info ("Label sequence: {}".format(' '.join([label_list[v] for v in y_train[i]])))
+        
 
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -165,7 +160,7 @@ if __name__ == '__main__':
         logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
         teacher_model.load_state_dict(torch.load(model_file))
     else:
-        teacher_model = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
+        teacher_model, _ = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
                     batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  os.path.join(args["teacher_model_dir"], 'teacher_weights_best.pth'))
         # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
         torch.save(teacher_model.state_dict(), model_file)
@@ -249,28 +244,11 @@ if __name__ == '__main__':
             #get teacher logits
             input_data_chunk = {"input_ids": X_unlabeled["input_ids"][start_teacher:end_teacher], "attention_mask": X_unlabeled["attention_mask"][start_teacher:end_teacher], "token_type_ids": X_unlabeled["token_type_ids"][start_teacher:end_teacher]}
             unlabel_dataset = Dataset(input_data_chunk,None)
-            unlabel_generator = torch.utils.data.DataLoader(unlabel_dataset, batch_size=args["teacher_batch_size"], shuffle=False)
-            teacher_model.to(device)
-            teacher_model.eval() 
-            output_teacher = []
-            for batch in tqdm(unlabel_generator, total=len(unlabel_generator), leave=False, desc="Predicting Teacher Model for unlabel dataset"):
-                input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), batch[0]["attention_mask"].type(torch.LongTensor),\
-                                                            batch[0]["token_type_ids"].type(torch.LongTensor)
-                
-                
-                input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
-
-                if stage == 1:
-                    _, outputs = model.forward(input_ids, attention_mask, token_type_ids)
-                else:  outputs, _ = model.forward(input_ids, attention_mask, token_type_ids)
-
-                output_teacher.append(outputs)
-
-
+            
             model_file = os.path.join(args["model_dir"], "model_stage_{}_indx_{}.pth".format(stage, start_teacher))
             history_file = os.path.join(args["model_dir"], "model_stage_{}_indx_{}_history.txt".format(stage, start_teacher))
-            ###################################################
-            if stage == 1:
+            
+            if stage >= 1 and stage < 3+len(shared_layers):
                 if os.path.exists(model_file):
                     logger.info ("Loadings weights for stage {} from {}".format(stage, model_file))
                     model_1.load_state_dict(torch.load(model_file))
@@ -278,21 +256,65 @@ if __name__ == '__main__':
                 else:
                     logger.info(summary(model_1,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
 
-                #     model_history = model_1.fit(input_data_chunk, y_layer_teacher, shuffle=True, batch_size=args["student_distil_batch_size"]*gpus, verbose=2, epochs=args["distil_epochs"], callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=args["patience"], restore_best_weights=True)], validation_split=0.1)
-                #     history = model_history.history
-                #     model_1.save_weights(model_file)
-                #     json.dump(history, open(history_file, 'w'))
+                    model_1, val_loss = train_model_student(teacher_model, model_1, unlabel_dataset, dev_dataset, batch_size= args["student_distil_batch_size"], optimizer = optimizer1, loss_dict =loss_dict1,\
+                                                epochs=args["distil_epochs"], device=device, path_save=  model_file, opt_policy= args["opt_policy"], stage= stage)
+                    
+                    history = {"val_loss":val_loss}
+                    save_history_file(history_file,history)
+                    
+                val_loss = history['val_loss']
+                if  val_loss < min_loss:
+                    min_loss = val_loss
+                    min_ckpt = model_1.state_dict()
+                    logger.info ("Checkpointing model weights with minimum validation loss {}".format(min_loss))
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+                    logger.info ("Resetting model to best weights found so far corresponding to val_loss {}".format(min_loss))
+                    model_1.load_state_dict(min_ckpt)
+                    if patience_counter == args["patience"]:
+                        logger.info("Early stopping")
+                        break
+       
+        if stage > 1 and stage < 3+len(shared_layers):
+            
+            cur_eval = ner_evaluate(model_1, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device)
+            
+            if cur_eval >= best_eval:
+                best_eval = cur_eval
+                best_model_weights = model_1.state_dict()
 
-                # val_loss = history['val_loss']
-                # if  val_loss < min_loss:
-                #     min_loss = val_loss
-                #     min_ckpt = model_1.get_weights()
-                #     logger.info ("Checkpointing model weights with minimum validation loss {}".format(min_loss))
-                #     patience_counter = 0
-                # else:
-                #     patience_counter += 1
-                #     logger.info ("Resetting model to best weights found so far corresponding to val_loss {}".format(min_loss))
-                #     model_1.set_weights(min_ckpt)
-                #     if patience_counter == args["patience"]:
-                #         logger.info("Early stopping")
-                #         break
+        if stage >= 3+len(shared_layers):
+            model_file = os.path.join(args["model_dir"], "model-stage-{}.pth".format(stage))
+            history_file = os.path.join(args["model_dir"], "model-stage-{}-history.txt".format(stage))
+            if os.path.exists(model_file):
+                logger.info ("Loadings weights for stage 3 from {}".format(model_file))
+                model_1.load_state_dict(torch.load(model_file))
+            else:
+                logger.info(summary(model_1,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+
+                model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1,
+                                batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file)    
+                history = {"val_loss":val_loss}
+                save_history_file(history_file,history)
+
+              
+            cur_eval = ner_evaluate(model_1, test_dataset, label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device)
+           
+
+            if cur_eval >= best_eval:
+                best_eval = cur_eval
+                best_model_weights = model_1.state_dict()
+
+    model_1.load_state_dict(best_model_weights)
+    logger.info ("Best eval score {}".format(best_eval))
+
+    #save xtremedistil training config and final model weights
+    json.dump(args, open(os.path.join(args["model_dir"], "xtremedistil-config.json"), 'w'))
+    torch.save(model_1.state_dict(), os.path.join(args["model_dir"], "xtremedistil.h5"))
+    
+    word_embeddings = model_1._modules.get('encoder').embeddings.word_embeddings.weight.cpu()
+    if type(word_embeddings) != np.ndarray:
+        word_embeddings = word_embeddings.numpy()
+    np.save(open(os.path.join(args["model_dir"], "word_embedding.npy"), "wb"), word_embeddings)
+    logger.info ("Model and config saved to {}".format(args["model_dir"]))

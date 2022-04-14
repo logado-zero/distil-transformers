@@ -121,11 +121,11 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
             torch.save(model.state_dict(), path_save)
             print("Save best model ----> ", path_save)
 
-        last_loss = current_loss
+            last_loss = current_loss
         
     
 
-    return model
+    return model, last_loss
 
 
 
@@ -164,6 +164,101 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
     logger.info ("Test scores {} {} {}".format(prec, rec, f1))
 
     return np.mean(f1)
+
+def train_model_student(teacher_model, student_model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda",\
+     path_save="./student_weights.pth", opt_policy = False, stage = 2):
+
+    unlabel_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
+
+    teacher_model.to(device)
+    teacher_model.eval() 
+
+    # Early stopping
+    last_loss = 1000
+    patience = 10
+    triggertimes = 0
+    #Set up mixed precision
+    if opt_policy:
+        scaler = GradScaler()
+
+    for epoch in range(epochs):
+        student_model.train()
+        epoch_loss = 0
+        idx = 0
+        pr = tqdm(unlabel_generator, total=len(unlabel_generator), leave=False, desc="Training Student Model for unlabel dataset")
+        for batch in pr:
+            idx += 1
+            input_ids, attention_mask, token_type_ids = batch["input_ids"].type(torch.LongTensor), batch["attention_mask"].type(torch.LongTensor),\
+                                                        batch["token_type_ids"].type(torch.LongTensor)
+  
+            input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+
+            if opt_policy:
+                with autocast():
+
+                    if stage == 1:
+                        _, output_teacher = teacher_model.forward(input_ids, attention_mask, token_type_ids)
+                    else:  output_teacher, _ = teacher_model.forward(input_ids, attention_mask, token_type_ids)
+
+                    outputs,_ = student_model(input_ids, attention_mask, token_type_ids)
+                    loss = 0
+                    if loss_dict["num"] == 1:
+                        loss += loss_dict["loss_name"](outputs, output_teacher)
+                    else:
+                        for i in range(loss_dict["num"]):
+                            loss += loss_dict["loss_name"](outputs[i], output_teacher[i])
+                    
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+            else:
+
+                if stage == 1:
+                    _, output_teacher = teacher_model.forward(input_ids, attention_mask, token_type_ids)
+                else:  output_teacher, _ = teacher_model.forward(input_ids, attention_mask, token_type_ids)
+
+                outputs,_ = student_model(input_ids, attention_mask, token_type_ids)
+                loss = 0
+                if loss_dict["num"] == 1:
+                    loss += loss_dict["loss_name"](outputs, output_teacher)
+                else:
+                    for i in range(loss_dict["num"]):
+                        loss += loss_dict["loss_name"](outputs[i], output_teacher[i])
+
+                loss.backward()
+                optimizer.step()
+
+            optimizer.zero_grad()
+            loss = loss.data.cpu().tolist()
+            epoch_loss += loss
+            pr.set_description("train loss: {}".format(epoch_loss / idx))
+            torch.cuda.empty_cache()
+
+        logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
+
+        # Early stopping
+        current_loss = validation(student_model, device, validation_generator, loss_dict)
+        print('The Current Loss:', current_loss)
+
+        if current_loss > last_loss:
+            trigger_times += 1
+            if trigger_times >= patience:
+                print('Early stopping!\nStart to test process.')
+                return student_model
+
+        else:
+            print('trigger times: 0')
+            trigger_times = 0
+            torch.save(student_model.state_dict(), path_save)
+            print("Save best model ----> ", path_save)
+
+            last_loss = current_loss
+        
+    
+
+    return student_model, last_loss
+
 
 def load_history_file(path: str):
     with open(path, 'r') as f:
