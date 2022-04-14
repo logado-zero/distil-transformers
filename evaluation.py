@@ -113,7 +113,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
             trigger_times += 1
             if trigger_times >= patience:
                 print('Early stopping!\nStart to test process.')
-                return model
+                return model, last_loss
 
         else:
             print('trigger times: 0')
