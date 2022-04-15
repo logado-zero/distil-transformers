@@ -43,6 +43,35 @@ def validation(model, device, valid_loader, loss_function):
 
     return loss_total / len(valid_loader)
 
+def validation_student(model, device, valid_loader, loss_function, stage= 3):
+
+    model.eval()
+    loss_total = 0
+
+    # Test validation data
+    with torch.no_grad():
+        pr = tqdm(valid_loader, total=len(valid_loader), leave=False,desc="Validate ....")
+        for batch in pr:
+            
+            input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), \
+                                            batch[0]["attention_mask"].type(torch.LongTensor),batch[0]["token_type_ids"].type(torch.LongTensor)
+            true = batch[1].type(torch.LongTensor)
+            
+            input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
+            true = true.to(device)
+
+            outputs, _ = model(input_ids, attention_mask, token_type_ids)
+            loss = 0
+            if loss_function["num"] == 1:
+              loss += loss_function["loss_name"](outputs, true)
+            else:
+              for i in range(loss_function["num"]):
+                
+                loss += loss_function["loss_name"](outputs[i], true[i])
+            loss_total += loss
+
+    return loss_total / len(valid_loader)
+
 
 def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda",\
      path_save="./teacher_weights.pth", opt_policy = False):
@@ -241,7 +270,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
         logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
 
         # Early stopping
-        current_loss = validation(student_model, device, validation_generator, loss_dict)
+        current_loss = validation_student(student_model, device, validation_generator, loss_dict, stage=stage)
         print('The Current Loss:', current_loss)
 
         if current_loss > last_loss:
