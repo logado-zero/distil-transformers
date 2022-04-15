@@ -129,7 +129,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
 
 
 
-def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32, device="cuda"):
+def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32, device="cuda", name_model = "teacher", stage = None):
 
     test_generator = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.to(device)
@@ -143,8 +143,10 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
         
         input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
         true = true.to(device)
-
-        outputs,_ = model.forward(input_ids, attention_mask, token_type_ids)
+        if name_model == "teacher":
+            outputs,_ = model.forward(input_ids, attention_mask, token_type_ids)
+        else:
+            outputs = model.forward(input_ids, attention_mask, token_type_ids, stage=stage)
         
         for i, seq in enumerate(outputs):
             for j in range(MAX_SEQUENCE_LENGTH):

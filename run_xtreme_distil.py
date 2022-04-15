@@ -167,7 +167,8 @@ if __name__ == '__main__':
 
 
    
-    ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"], device =device)
+    ner_evaluate(teacher_model, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["teacher_batch_size"], device =device,\
+                name_model = 'teacher')
     word_emb = None
     if args["compress_word_embedding"]:
         word_emb = get_word_embedding(teacher_model._modules.get('encoder'), pt_tokenizer, args["hidden_size"])
@@ -279,7 +280,8 @@ if __name__ == '__main__':
        
         if stage > 1 and stage < 3+len(shared_layers):
             
-            cur_eval = ner_evaluate(model_1, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device)
+            cur_eval = ner_evaluate(model_1, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device,\
+                            name_model = 'student',stage =stage)
             
             if cur_eval >= best_eval:
                 best_eval = cur_eval
@@ -300,7 +302,8 @@ if __name__ == '__main__':
                 save_history_file(history_file,history)
 
               
-            cur_eval = ner_evaluate(model_1, test_dataset, label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device)
+            cur_eval = ner_evaluate(model_1, test_dataset, label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device,\
+                    name_model = 'student',stage =stage)
            
 
             if cur_eval >= best_eval:
