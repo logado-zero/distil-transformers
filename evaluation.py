@@ -60,7 +60,7 @@ def validation_student(model, device, valid_loader, loss_function, stage= 3):
             input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
             true = true.to(device)
 
-            outputs, _ = model(input_ids, attention_mask, token_type_ids)
+            outputs = model(input_ids, attention_mask, token_type_ids, stage=stage)
             loss = 0
             if loss_function["num"] == 1:
               loss += loss_function["loss_name"](outputs, true)
