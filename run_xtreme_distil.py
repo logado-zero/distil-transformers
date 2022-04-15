@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
     if os.path.exists(model_file):
         logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
-        teacher_model.load_state_dict(torch.load(model_file))
+        teacher_model.load_state_dict(torch.load(model_file,map_location=torch.device(device)))
     else:
         teacher_model, _ = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
                     batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  os.path.join(args["teacher_model_dir"], 'teacher_weights_best.pth'))
