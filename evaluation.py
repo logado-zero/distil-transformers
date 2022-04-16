@@ -43,9 +43,9 @@ def validation(model, device, valid_loader, loss_function):
 
     return loss_total / len(valid_loader)
 
-def validation_student(model, device, valid_loader, loss_function, stage= 3):
-
-    model.eval()
+def validation_student(teacher_model, student_model, device, valid_loader, loss_function, stage= 3):
+    teacher_model.eval()
+    student_model.eval()
     loss_total = 0
 
     # Test validation data
@@ -58,16 +58,18 @@ def validation_student(model, device, valid_loader, loss_function, stage= 3):
             true = batch[1].type(torch.LongTensor)
             
             input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
-            true = true.to(device)
+            if stage == 1:
+                _, output_teacher = teacher_model.forward(input_ids, attention_mask, token_type_ids)
+            else:  output_teacher, _ = teacher_model.forward(input_ids, attention_mask, token_type_ids)
 
-            outputs = model(input_ids, attention_mask, token_type_ids, stage=stage)
+            outputs = student_model(input_ids, attention_mask, token_type_ids, stage=stage)
             loss = 0
             if loss_function["num"] == 1:
-              loss += loss_function["loss_name"](outputs, true)
+              loss += loss_function["loss_name"](outputs, output_teacher)
             else:
               for i in range(loss_function["num"]):
-                
-                loss += loss_function["loss_name"](outputs[i], true[i])
+    
+                loss += loss_function["loss_name"](outputs[i], output_teacher[i])
             loss_total += loss
 
     return loss_total / len(valid_loader)
@@ -271,6 +273,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
 
         # Early stopping
         current_loss = validation_student(student_model, device, validation_generator, loss_dict, stage=stage)
+        current_loss = validation_student(teacher_model,student_model, device, validation_generator, loss_dict, stage=stage)
         print('The Current Loss:', current_loss)
 
         if current_loss > last_loss:
