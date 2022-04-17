@@ -300,7 +300,7 @@ def load_history_file(path: str):
     history = {}
     for i in file_read:
         line = i.strip().split(": ")
-        x = {str(line[0]):line[1]}
+        x = {str(line[0]):float(line[1])}
         history.update(x)
 
     return history
