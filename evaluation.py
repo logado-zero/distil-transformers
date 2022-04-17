@@ -299,7 +299,7 @@ def load_history_file(path: str):
         file_read = f.readlines()
     history = {}
     for i in file_read:
-        line = i.strip().slpit(": ")
+        line = i.strip().split(": ")
         x = {str(line[0]):line[1]}
         history.update(x)
 
