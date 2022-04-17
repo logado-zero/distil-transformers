@@ -272,7 +272,6 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
         logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
 
         # Early stopping
-        current_loss = validation_student(student_model, device, validation_generator, loss_dict, stage=stage)
         current_loss = validation_student(teacher_model,student_model, device, validation_generator, loss_dict, stage=stage)
         print('The Current Loss:', current_loss)
 
