@@ -297,7 +297,7 @@ if __name__ == '__main__':
                 logger.info(summary(model_1,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
 
                 model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1,
-                                batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file)    
+                                batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file, stage = stage)    
                 history = {"val_loss":val_loss}
                 save_history_file(history_file,history)
 
