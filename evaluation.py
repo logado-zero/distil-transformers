@@ -252,7 +252,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
                     _, output_teacher = teacher_model.forward(input_ids, attention_mask, token_type_ids)
                 else:  output_teacher, _ = teacher_model.forward(input_ids, attention_mask, token_type_ids)
 
-                outputs,_ = student_model(input_ids, attention_mask, token_type_ids)
+                outputs = student_model(input_ids, attention_mask, token_type_ids, stage=stage)
                 loss = 0
                 if loss_dict["num"] == 1:
                     loss += loss_dict["loss_name"](outputs, output_teacher)
