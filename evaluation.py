@@ -79,7 +79,7 @@ def validation_student(teacher_model, student_model, device, valid_loader, loss_
 
 
 def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_size=4, epochs =100, device ="cuda",\
-     path_save="./teacher_weights.pth", opt_policy = False):
+     path_save="./teacher_weights.pth", opt_policy = False, stage = None):
 
     training_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
@@ -108,7 +108,9 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
 
             if opt_policy:
                 with autocast():
-                    outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                    if stage == None:
+                        outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                    else: outputs = model(input_ids, attention_mask, token_type_ids, stage=stage)
                     loss = 0
                     if loss_dict["num"] == 1:
                         loss += loss_dict["loss_name"](outputs, true)
@@ -120,7 +122,9 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
                     scaler.step(optimizer)
                     scaler.update()
             else:
-                outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                if stage == None:
+                    outputs,_ = model(input_ids, attention_mask, token_type_ids)
+                else: outputs = model(input_ids, attention_mask, token_type_ids, stage=stage)
                 loss = 0
                 if loss_dict["num"] == 1:
                     loss += loss_dict["loss_name"](outputs, true)
