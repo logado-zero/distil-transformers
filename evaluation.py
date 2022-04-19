@@ -229,6 +229,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
         idx = 0
         pr = tqdm(unlabel_generator, total=len(unlabel_generator), leave=False, desc="Training Student Model for unlabel dataset")
         for batch in pr:
+            optimizer.zero_grad()
             idx += 1
             input_ids, attention_mask, token_type_ids = batch["input_ids"].type(torch.LongTensor), batch["attention_mask"].type(torch.LongTensor),\
                                                         batch["token_type_ids"].type(torch.LongTensor)
@@ -276,7 +277,7 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
                 loss.backward()
                 optimizer.step()
 
-            optimizer.zero_grad()
+            
             loss = loss.data.cpu().tolist()
             epoch_loss += loss
             pr.set_description("train loss: {}".format(epoch_loss / idx))
