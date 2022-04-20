@@ -180,7 +180,7 @@ if __name__ == '__main__':
     
     shared_layers = set()
     for name, param in model_1.named_parameters():
-        if param.requires_grad:
+        if param.requires_grad & (name.split(".")[0] != "last_linear"):
             shared_layers.add(name.split(".")[0])
     shared_layers = list(shared_layers)
     logger.info ("Shared layers {}".format(shared_layers))
@@ -216,7 +216,7 @@ if __name__ == '__main__':
             for name, param in model_1.named_parameters():
                 if name.split(".")[0] == shared_layers[stage-3]:
                     param.requires_grad = True
-            loss_dict1 = models.compile_model(model_1, args, stage=3)
+            loss_dict1 = models.compile_model(model_1, args, stage=2)
             optimizer1 = torch.optim.Adam(model_1.parameters(),lr=3e-5, eps=1e-08)
 
         elif stage == 3+len(shared_layers):
@@ -260,10 +260,10 @@ if __name__ == '__main__':
 
                     model_1, val_loss = train_model_student(teacher_model, model_1, unlabel_dataset, dev_dataset, batch_size= args["student_distil_batch_size"], optimizer = optimizer1, loss_dict =loss_dict1,\
                                                 epochs=args["distil_epochs"], device=device, path_save=  model_file, opt_policy= args["opt_policy"], stage= stage)
-                    
+                    val_loss = val_loss.cpu().numpy()
                     history = {"val_loss":val_loss}
                     save_history_file(history_file,history)
-                    
+                
                 val_loss = history['val_loss']
                 if  val_loss < min_loss:
                     min_loss = val_loss
@@ -298,6 +298,7 @@ if __name__ == '__main__':
 
                 model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1,
                                 batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file, stage = stage)    
+                val_loss = val_loss.cpu().numpy()
                 history = {"val_loss":val_loss}
                 save_history_file(history_file,history)
 

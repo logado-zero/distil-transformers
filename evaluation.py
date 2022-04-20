@@ -14,7 +14,7 @@ from torch.cuda.amp import autocast, GradScaler
 
 logger = logging.getLogger('xtremedistil')
 
-def validation(model, device, valid_loader, loss_function):
+def validation(model, device, valid_loader, loss_function, stage = None):
 
     model.eval()
     loss_total = 0
@@ -31,7 +31,10 @@ def validation(model, device, valid_loader, loss_function):
             input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
             true = true.to(device)
 
-            outputs, _ = model(input_ids, attention_mask, token_type_ids)
+            if stage == None:
+                outputs,_ = model(input_ids, attention_mask, token_type_ids)
+            else: outputs = model(input_ids, attention_mask, token_type_ids, stage=stage)
+            
             loss = 0
             if loss_function["num"] == 1:
               loss += loss_function["loss_name"](outputs, true)
@@ -144,7 +147,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, batch_s
         logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(epoch, epoch_loss / idx))
 
         # Early stopping
-        current_loss = validation(model, device, validation_generator, loss_dict)
+        current_loss = validation(model, device, validation_generator, loss_dict, stage= stage)
         print('The Current Loss:', current_loss)
 
         if current_loss > last_loss:
