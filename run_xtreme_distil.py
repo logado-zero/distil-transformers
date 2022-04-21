@@ -182,7 +182,6 @@ if __name__ == '__main__':
     for name, param in model_1.named_parameters():
         if param.requires_grad & (name.split(".")[0] != "last_linear"):
             shared_layers.add(name.split(".")[0])
-    shared_layers = list(shared_layers)
     logger.info ("Shared layers {}".format(shared_layers))
 
     best_model = None
