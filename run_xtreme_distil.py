@@ -109,8 +109,9 @@ if __name__ == '__main__':
         args["compress_word_embedding"] = True
 
     #get labels for NER
-    
-    label_list = get_labels(os.path.join(args["task"], "labels.tsv"), special_tokens)
+    label_list=None
+    if args["do_NER"]:
+        label_list = get_labels(os.path.join(args["task"], "labels.tsv"), special_tokens)
 
     #generate sequence data for fine-tuning pre-trained teacher
     X_train, y_train = generate_sequence_data(args["seq_len"], os.path.join(args["task"], "train.tsv"), pt_tokenizer, label_list=label_list, special_tokens=special_tokens, do_pairwise=args["do_pairwise"], do_NER=args["do_NER"])
@@ -125,6 +126,9 @@ if __name__ == '__main__':
     train_dataset = Dataset(X_train,y_train)
     test_dataset = Dataset(X_test,y_test)
     dev_dataset = Dataset(X_dev,y_dev)
+    
+    if not args["do_NER"]:
+        label_list = [str(elem) for elem in set(y_train)]
 
     args["label_list"] = label_list
 
@@ -140,9 +144,10 @@ if __name__ == '__main__':
         logger.info ("Input ids: {}".format(X_train["input_ids"][i]))
         logger.info ("Attention mask: {}".format(X_train["attention_mask"][i]))
         logger.info ("Token type ids: {}".format(X_train["token_type_ids"][i]))
-        
-        logger.info ("Label sequence: {}".format(' '.join([label_list[v] for v in y_train[i]])))
-        
+        if args["do_NER"]:
+            logger.info ("Label sequence: {}".format(' '.join([label_list[v] for v in y_train[i]])))
+        else:
+            logger.info ("Label: {}".format(y_train[i]))
 
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
