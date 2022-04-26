@@ -5,7 +5,7 @@ Code for XtremeDistil for distilling massive multi-lingual models.
 
 from preprocessing import convert_to_unicode
 
-from transformers import BertConfig, BertModel, BertForSequenceClassification
+from transformers import *
 from huggingface_utils import get_output_state_indices
 
 import csv
@@ -68,7 +68,7 @@ class construct_transformer_teacher_model(torch.nn.Module):
 
         classes = len(args["label_list"])
 
-        self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config)
+        self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config, from_tf=True)
         self.dropout = torch.nn.Dropout(p=teacher_config.hidden_dropout_prob)
         self.linear = torch.nn.Linear(768,classes)
         torch.nn.init.trunc_normal_(self.linear.weight, std= teacher_config.initializer_range)
