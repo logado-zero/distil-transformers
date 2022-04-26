@@ -326,6 +326,6 @@ if __name__ == '__main__':
     
     word_embeddings = model_1._modules.get('student_encoder').embeddings.word_embeddings.weight.cpu()
     if type(word_embeddings) != np.ndarray:
-        word_embeddings = word_embeddings.numpy()
+        word_embeddings = word_embeddings.detach().numpy()
     np.save(open(os.path.join(args["model_dir"], "word_embedding.npy"), "wb"), word_embeddings)
     logger.info ("Model and config saved to {}".format(args["model_dir"]))
