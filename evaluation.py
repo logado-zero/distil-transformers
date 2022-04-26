@@ -73,8 +73,6 @@ def validation_student(teacher_model, student_model, device, valid_loader, loss_
                 else:
                     loss += loss_function["loss_name"](outputs, torch.argmax(output_teacher, dim =2))
             else:
-                print(outputs.size())
-                print(output_teacher.size())
                 for i in range(loss_function["num"]):
                     
                     loss += loss_function["loss_name"](outputs[i], output_teacher[i])
