@@ -322,7 +322,7 @@ if __name__ == '__main__':
 
     #save xtremedistil training config and final model weights
     json.dump(args, open(os.path.join(args["model_dir"], "xtremedistil-config.json"), 'w'))
-    torch.save(model_1.state_dict(), os.path.join(args["model_dir"], "xtremedistil.h5"))
+    torch.save(model_1.state_dict(), os.path.join(args["model_dir"], "xtremedistil.pth"))
     
     word_embeddings = model_1._modules.get('student_encoder').embeddings.word_embeddings.weight.cpu()
     if type(word_embeddings) != np.ndarray:

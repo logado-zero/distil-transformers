@@ -199,7 +199,7 @@ class construct_transformer_student_model(torch.nn.Module):
 def compile_model(model, args, stage):
 
     #construct student models for different stages
-    if stage == 1 or stage == 2:
+    if stage == 1:
         if args["distil_attention"] and args["distil_multi_hidden_states"]:
             num_loss = (2 * args["num_hidden_layers"] + 1)
         elif args["distil_multi_hidden_states"]:
