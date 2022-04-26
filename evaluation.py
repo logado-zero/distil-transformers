@@ -68,9 +68,6 @@ def validation_student(teacher_model, student_model, device, valid_loader, loss_
             outputs = student_model(input_ids, attention_mask, token_type_ids, stage=stage)
             loss = 0
             if loss_function["num"] == 1:
-                if stage < 3:
-                    loss += loss_function["loss_name"](outputs, output_teacher)
-                else:
                     loss += loss_function["loss_name"](outputs, torch.argmax(output_teacher, dim =2))
             else:
                 for i in range(loss_function["num"]):
@@ -249,9 +246,6 @@ def train_model_student(teacher_model, student_model, train_dataset, dev_dataset
                     outputs = student_model(input_ids, attention_mask, token_type_ids, stage=stage)
                     loss = 0
                     if loss_dict["num"] == 1:
-                        if stage < 3:
-                            loss += loss_dict["loss_name"](outputs, output_teacher)
-                        else:
                             loss += loss_dict["loss_name"](outputs, torch.argmax(output_teacher, dim =2))
                     else:
                         for i in range(loss_dict["num"]):
