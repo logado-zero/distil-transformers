@@ -97,11 +97,11 @@ class construct_transformer_teacher_model(torch.nn.Module):
                     embedding.append(encode[output_attention_state_indx][-i])
         else:
             if self.args["do_NER"]:
-                embedding.append(encode[0])
+                embedding.append(encode[-1])
             else:
-                embedding.append(encode[0][:,0])
+                embedding.append(encode[-1][:,0])
 
-        dropout = self.dropout(embedding[0])
+        dropout = self.dropout(embedding[-1])
         output = self.linear(dropout)
         
         
