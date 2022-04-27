@@ -69,8 +69,9 @@ def get_special_tokens_from_teacher(Tokenizer, pt_tokenizer):
 def get_output_state_indices(Model):
 
 	#huggingface pre-trained model output hidden state and attention indices
-	
-	output_hidden_state_indx = 2
-	
+	if Model == BertModel:
+		output_hidden_state_indx = 2
+	else:
+		output_hidden_state_indx = 1
 	output_attention_state_indx = output_hidden_state_indx + 1
 	return output_hidden_state_indx, output_attention_state_indx

@@ -78,7 +78,7 @@ class construct_transformer_teacher_model(torch.nn.Module):
 
         encode = self.encoder(input_ids, token_type_ids=token_type_ids,  attention_mask=attention_mask)
 
-        output_hidden_state_indx, output_attention_state_indx =  get_output_state_indices(self.ModelTeacher)
+        output_hidden_state_indx, output_attention_state_indx =  2, 3
 
         
 
@@ -101,7 +101,7 @@ class construct_transformer_teacher_model(torch.nn.Module):
             else:
                 embedding.append(encode[0][:,0])
 
-        dropout = self.dropout(embedding[-1])
+        dropout = self.dropout(embedding[0])
         output = self.linear(dropout)
         
         
