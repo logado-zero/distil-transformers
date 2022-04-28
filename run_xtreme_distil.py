@@ -64,6 +64,7 @@ if __name__ == '__main__':
     #teacher model parameters (optional)
     parser.add_argument("--pt_teacher", nargs="?", default="TFBertModel",help="Pre-trained teacher model to distil")
     parser.add_argument("--pt_teacher_checkpoint", nargs="?", default="bert-base-multilingual-cased", help="teacher model checkpoint to load to pre-trained weights")
+    parser.add_argument("--tf_model_check", action="store_true", default=False, help="if teacher model checkpoint is tensorflow model")
 
     #mixed precision
     parser.add_argument("--opt_policy", nargs="?", default=False, help="mixed precision policy")
