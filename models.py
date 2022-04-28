@@ -67,8 +67,10 @@ class construct_transformer_teacher_model(torch.nn.Module):
         self.args = args
 
         classes = len(args["label_list"])
-
-        self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config, from_tf=True)
+        if args["tf_model_check"]:
+            self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config, from_tf=True)
+        else: self.encoder = ModelTeacher.from_pretrained(args["pt_teacher_checkpoint"], config=teacher_config)
+        
         self.dropout = torch.nn.Dropout(p=teacher_config.hidden_dropout_prob)
         self.linear = torch.nn.Linear(768,classes)
         torch.nn.init.trunc_normal_(self.linear.weight, std= teacher_config.initializer_range)
