@@ -85,7 +85,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, args, b
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
 
     # Early stopping
-    last_loss = 1000
+    last_loss = 0
     patience = 10
     triggertimes = 0
     #Set up mixed precision
@@ -148,9 +148,9 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, args, b
         # print('The Current Loss:', current_loss)
         current_loss = ner_evaluate(model, dev_dataset , args["label_list"], args['special_tokens'] , args["seq_len"], batch_size=args["teacher_batch_size"], device =device,\
                                         name_model = 'teacher')
+        print('The F1-score valid:', current_loss)
 
-
-        if current_loss > last_loss:
+        if current_loss < last_loss:
             trigger_times += 1
             if trigger_times >= patience:
                 print('Early stopping!\nStart to test process.')
