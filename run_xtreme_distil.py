@@ -91,6 +91,7 @@ if __name__ == '__main__':
     pt_tokenizer = Tokenizer.from_pretrained(args["pt_teacher_checkpoint"])
 
     special_tokens = get_special_tokens_from_teacher(Tokenizer, pt_tokenizer)
+    args['special_tokens'] = special_tokens
     output_hidden_state_indx, output_attention_state_indx =  get_output_state_indices(ModelTeacher)
 
     teacher_config = TeacherConfig.from_pretrained(args["pt_teacher_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
@@ -166,7 +167,7 @@ if __name__ == '__main__':
         logger.info ("Loadings weights for fine-tuned model from {}".format(model_file))
         teacher_model.load_state_dict(torch.load(model_file,map_location=torch.device(device)))
     else:
-        teacher_model, _ = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict,
+        teacher_model, _ = train_model(teacher_model, train_dataset, dev_dataset, optimizer = optimizer, loss_dict =loss_dict, args =args,
                     batch_size= args["teacher_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  os.path.join(args["teacher_model_dir"], 'teacher_weights_best.pth'))
         # callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=args["patience"], restore_best_weights=True)]
         torch.save(teacher_model.state_dict(), model_file)
@@ -303,7 +304,7 @@ if __name__ == '__main__':
             else:
                 logger.info(summary(model_1,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
 
-                model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1,
+                model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1, args = args,
                                 batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file, stage = stage)    
                 val_loss = val_loss.cpu().numpy()
                 history = {"val_loss":val_loss}
