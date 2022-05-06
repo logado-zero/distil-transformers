@@ -56,7 +56,7 @@ class SparseCategoricalCrossentropy_torch(torch.nn.Module):
         super(SparseCategoricalCrossentropy_torch, self).__init__()
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         loss = torch.nn.NLLLoss()
-        return loss(torch.log(torch.nn.functional.softmax(input.transpose(1, 2))), target)
+        return loss(torch.log(torch.nn.functional.softmax(input, dim=2).transpose(1, 2)), target)
 
 
 class construct_transformer_teacher_model(torch.nn.Module):
