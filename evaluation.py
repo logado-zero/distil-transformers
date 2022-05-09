@@ -79,7 +79,7 @@ def validation_student(teacher_model, student_model, device, valid_loader, loss_
 
 
 def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, args, batch_size=4, epochs =100, device ="cuda",\
-     path_save="./teacher_weights.pth", opt_policy = False, stage = None):
+     path_save="./teacher_weights.pth", opt_policy = False, stage = None, name_model = "teacher"):
 
     training_generator = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_generator = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
@@ -147,7 +147,7 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, args, b
         # current_loss = validation(model, device, validation_generator, loss_dict, stage= stage)
         # print('The Current Loss:', current_loss)
         current_loss = ner_evaluate(model, dev_dataset , args["label_list"], args['special_tokens'] , args["seq_len"], batch_size=args["teacher_batch_size"], device =device,\
-                                        name_model = 'teacher')
+                                        name_model = name_model)
         print('The F1-score valid:', current_loss)
 
         if current_loss < last_loss:
