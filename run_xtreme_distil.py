@@ -291,9 +291,7 @@ if __name__ == '__main__':
             cur_eval = ner_evaluate(model_1, test_dataset , label_list, special_tokens, args["seq_len"], batch_size=args["student_distil_batch_size"], device =device,\
                             name_model = 'student',stage =stage)
             
-            if cur_eval >= best_eval:
-                best_eval = cur_eval
-                best_model_weights = model_1.state_dict()
+        
 
         if stage >= 3+len(shared_layers):
             model_file = os.path.join(args["model_dir"], "model-stage-{}.pth".format(stage))
@@ -306,7 +304,7 @@ if __name__ == '__main__':
 
                 model_1, val_loss  = train_model(model_1, train_dataset, dev_dataset, optimizer = optimizer1, loss_dict =loss_dict1, args = args,
                                 batch_size= args["student_distil_batch_size"], epochs=args["ft_epochs"], device=device, path_save =  model_file, stage = stage, name_model = 'student')    
-                val_loss = val_loss.cpu().numpy()
+
                 history = {"val_loss":val_loss}
                 save_history_file(history_file,history)
 
