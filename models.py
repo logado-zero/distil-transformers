@@ -118,12 +118,12 @@ class construct_transformer_student_model(torch.nn.Module):
         classes = len(args["label_list"])
 
         #construct student models for different stages
-        if args["pt_student_checkpoint"]:
-            student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-            self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
-        else:
-            student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-            self.student_encoder = BertModel(config=student_config)
+        # if args["pt_student_checkpoint"]:
+        #     student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
+        #     self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
+        # else:
+        #     student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
+        #     self.student_encoder = BertModel(config=student_config)
 
         
 
