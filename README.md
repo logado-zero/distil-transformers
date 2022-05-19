@@ -21,7 +21,7 @@ Dataset folder must have 3 files : ```train.tsv``` ```dev.tsv``` ```test.tsv``` 
 
 * ```train/dev/test '.tsv'``` files must be formatted in *.tsv* file with ```sep="\t"``` for token-wise tags data as follow:
 
--- Example: Cả nước Thái bàng hoàng . <tab> O O B-LOC O O O
+-- Example: ```Cả nước Thái bàng hoàng . <tab> O O B-LOC O O O```
 * ```labels.tsv``` file containing class labels for sequence labeling, for example:
   ```
   B-ORG
