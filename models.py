@@ -118,12 +118,12 @@ class construct_transformer_student_model(torch.nn.Module):
         classes = len(args["label_list"])
 
         #construct student models for different stages
-        # if args["pt_student_checkpoint"]:
-        #     student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-        #     self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
-        # else:
-        #     student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
-        #     self.student_encoder = BertModel(config=student_config)
+        if args["pt_student_checkpoint"]:
+            student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
+            self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
+        else:
+            student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
+            self.student_encoder = BertModel(config=student_config)
 
         
 
@@ -196,6 +196,82 @@ class construct_transformer_student_model(torch.nn.Module):
             outputs = self.last_dropout(embedding[0])
             logits = self.last_linear(outputs)
             return logits
+
+class construct_student_model_LADA(torch.nn.Module):
+    def __init__(self, args, word_emb=None):
+        super(construct_transformer_student_model, self).__init__()
+        self.word_emb = word_emb
+        self.args = args
+
+        classes = len(args["label_list"])
+
+        #construct student models for different stages
+        if args["pt_student_checkpoint"]:
+            student_config = BertConfig.from_pretrained(args["pt_student_checkpoint"])
+            self.student_encoder = BertModel.from_pretrained(args["pt_student_checkpoint"], config=student_config)
+        else:
+            student_config = BertConfig(num_hidden_layers=args["num_hidden_layers"], num_attention_heads=args["num_attention_heads"], hidden_size=args["hidden_size"], output_hidden_states=args["distil_multi_hidden_states"], output_attentions=args["distil_attention"])
+            self.student_encoder = BertModel(config=student_config)
+
+        
+
+        if word_emb is not None:
+            if args["freeze_word_embedding"]:
+                matrix_embedding = torch.nn.Embedding.from_pretrained(torch.Tensor(word_emb), padding_idx=0, freeze=True)
+            else:
+                matrix_embedding = torch.nn.Embedding.from_pretrained(torch.Tensor(word_emb), padding_idx=0, freeze=False)
+        self.student_encoder.set_input_embeddings(matrix_embedding)
+
+        logger.info(student_config)
+
+        self.hidden_linear = torch.nn.ModuleList()
+        self.hidden_dropout = torch.nn.ModuleList()
+        if self.args["teacher_hidden_size"] > self.args["hidden_size"]:
+            if self.args["distil_multi_hidden_states"]:
+                for i in range(args["num_hidden_layers"]+1):
+                    self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
+
+                    self.hidden_linear.append(torch.nn.Linear(self.args["hidden_size"],args["teacher_hidden_size"]))
+                    torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+                    # if i == 0:
+                    #     self.hidden_linear.append(torch.nn.Linear(384,args["teacher_hidden_size"]))
+                    #     torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+                    # else:
+                    #     self.hidden_linear.append(torch.nn.Linear(args["teacher_hidden_size"],args["teacher_hidden_size"]))
+                    #     torch.nn.init.trunc_normal_(self.hidden_linear[-1].weight, std= student_config.initializer_range)
+            else:
+                self.hidden_dropout.append(torch.nn.Dropout(p=student_config.hidden_dropout_prob))
+                self.hidden_linear.append(torch.nn.Linear(84,args["teacher_hidden_size"]))
+                torch.nn.init.trunc_normal_(self.hidden_linear[0].weight, std= student_config.initializer_range)
+        
+        self.last_dropout = torch.nn.Dropout(p=student_config.hidden_dropout_prob)
+        self.last_linear = torch.nn.Linear(args["teacher_hidden_size"],classes)
+        torch.nn.init.trunc_normal_(self.last_linear.weight, std= student_config.initializer_range)
+                    
+    def forward(self, input_ids_a, attention_mask_a, token_type_ids_a, 
+                        input_ids_b, attention_mask_b, token_type_ids_b ,stage=7):
+        encode_a = self.student_encoder(input_ids_a, token_type_ids=token_type_ids_a,  attention_mask=attention_mask_a)
+        encode_b = self.student_encoder(input_ids_b, token_type_ids=token_type_ids_b,  attention_mask=attention_mask_b)
+        
+        l = 0.7
+        embedding = []
+       
+        if self.args["do_NER"]:
+            embedding.append(l*encode_a[0]+(1-l)*encode_b[0])
+        else:
+            embedding.append(l*encode_a[0][:,0]+(1-l)*encode_b[0][:,0])
+
+        if self.args["teacher_hidden_size"] > self.args["hidden_size"]:
+            if self.args["distil_multi_hidden_states"]:
+                embedding = [self.hidden_linear[i](self.hidden_dropout[i](embedding[i])) if (i < self.args["num_hidden_layers"]+1) else embedding[i] for i in range(len(embedding))]
+            else:
+                embedding = [self.hidden_linear[0](self.hidden_dropout[0](embedding[0]))]
+
+        
+        outputs = self.last_dropout(embedding[0])
+        logits = self.last_linear(outputs)
+        return logits
+
 
 
 def compile_model(model, args, stage):

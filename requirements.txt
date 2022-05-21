@@ -4,3 +4,6 @@ sentencepiece
 torch
 torch-summary
 tensorflow-gpu
+sacremoses
+faiss-cpu
+sentence-transformers
