@@ -4,3 +4,4 @@ sentencepiece
 torch
 torch-summary
 tensorflow-gpu
+sacremoses
