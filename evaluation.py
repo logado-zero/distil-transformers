@@ -206,7 +206,7 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
     if check_time_process:
         time_end = time.time()
         duration = time_end - time_start
-        logger.info("Process time for running test dataset: {} ".format(duration))
+        logger.info("Process time for running test dataset: {} s".format(duration))
 
 
     prec, rec, f1 = conlleval.evaluate(true_tags_all, pred_tags_all, special_tokens, verbose=True)
