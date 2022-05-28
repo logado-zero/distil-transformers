@@ -93,7 +93,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
 
     logger.info(summary(model,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
-    model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.h5"),map_location=torch.device(device)))
+    model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.pth"),map_location=torch.device(device)))
 
     cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["batch_size"], device =device,\
                             name_model = 'student',stage =2, check_time_process = True)
