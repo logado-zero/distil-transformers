@@ -55,7 +55,6 @@ if __name__ == '__main__':
     #load xtreme distil config
     distil_args = json.load(open(os.path.join(args["model_dir"], "xtremedistil-config.json"), 'r'))
     label_list = distil_args["label_list"]
-    args["label_list"] = distil_args["label_list"]
 
     #get pre-trained model, tokenizer and config
     for indx, model in enumerate(MODELS):
@@ -88,12 +87,12 @@ if __name__ == '__main__':
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = models.construct_transformer_student_model(args, word_emb=word_emb)
-    loss_dict = models.compile_model(model, args, stage=2)
+    model = models.construct_transformer_student_model(distil_args, word_emb=word_emb)
+    loss_dict = models.compile_model(model, distil_args, stage=2)
     optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
 
     logger.info (model.summary())
     model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.h5"),map_location=torch.device(device)))
 
-    cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["student_distil_batch_size"], device =device,\
+    cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["batch_size"], device =device,\
                             name_model = 'student',stage =2, check_time_process = True)
