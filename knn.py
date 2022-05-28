@@ -9,7 +9,7 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 import pickle
 import faiss
-from tqdm import tqdm
+import tqdm 
 import tensorflow as tf
 
 def convert_to_unicode(text):
@@ -62,7 +62,9 @@ if __name__ == "__main__":
     # Create embedder
     embedder = SentenceTransformer('bert-base-nli-mean-tokens')
     #Encode embedding
-    corpus_embeddings = embedder.encode(train_examples)
+
+    corpus_embeddings = embedder.encode(train_examples, show_progress_bar= True, device = 'cuda')
+
     corpus_embeddings_ = np.array(corpus_embeddings)
     # Set size embedding
     d = 768

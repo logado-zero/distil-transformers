@@ -6,6 +6,7 @@ Code for XtremeDistil for distilling massive multi-lingual models.
 from sklearn.decomposition import dict_learning_online
 import conlleval
 import logging
+import time
 import numpy as np
 from tqdm import tqdm 
 import torch
@@ -170,13 +171,15 @@ def train_model(model, train_dataset, dev_dataset, optimizer, loss_dict, args, b
 
 
 
-def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32, device="cuda", name_model = "teacher", stage = None):
+def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGTH, batch_size=32, device="cuda", name_model = "teacher", stage = None, check_time_process = None):
 
     test_generator = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.to(device)
     model.eval()    
     pred_tags_all = []
     true_tags_all = []
+    if check_time_process:
+        time_start = time.time()
     for batch in tqdm(test_generator, total=len(test_generator), leave=False, desc="Predicting"):
         input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), batch[0]["attention_mask"].type(torch.LongTensor),\
                                                     batch[0]["token_type_ids"].type(torch.LongTensor)
@@ -189,6 +192,7 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
         else:
             outputs = model.forward(input_ids, attention_mask, token_type_ids, stage=stage)
         
+
         for i, seq in enumerate(outputs):
             for j in range(MAX_SEQUENCE_LENGTH):
                 indx = true[i][j]
@@ -200,7 +204,10 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
                 indx = torch.argmax(seq[j])
                 pred_label = labels[indx]
                 pred_tags_all.append(pred_label)
-
+    if check_time_process:
+        time_end = time.time()
+        duration = time_end - time_start
+        logger.info("Process time for running test dataset: {} ".format(duration))
 
 
     prec, rec, f1 = conlleval.evaluate(true_tags_all, pred_tags_all, special_tokens, verbose=True)
