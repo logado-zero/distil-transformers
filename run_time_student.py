@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_dir", required=True, help="path of model directory")
     parser.add_argument("--do_eval", action="store_true", default=False, help="whether to evaluate model performance on test data")
     parser.add_argument("--do_predict", action="store_true", default=False, help="whether to make model predictions")
-
+    parser.add_argument("--if_use_teacher", action="store_true", default=False, help="if use model teacher or not")
     #mixed precision
     parser.add_argument("--opt_policy", nargs="?", default=False, help="mixed precision policy")
 
@@ -87,13 +87,24 @@ if __name__ == '__main__':
     test_dataset = Dataset(X_test,y_test)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args["if_use_teacher"]:
+        teacher_config = TeacherConfig.from_pretrained(distil_args["pt_teacher_checkpoint"], output_hidden_states=distil_args["distil_multi_hidden_states"], output_attentions=distil_args["distil_attention"])
+        model = models.construct_transformer_teacher_model(distil_args, ModelTeacher, teacher_config)
+        loss_dict = models.compile_model(model, distil_args, stage=3)
+        optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
 
-    model = models.construct_transformer_student_model(distil_args, word_emb=word_emb)
-    loss_dict = models.compile_model(model, distil_args, stage=2)
-    optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
+        logger.info(summary(model,input_size=(768,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+        model.load_state_dict(torch.load(os.path.join(args["model_dir"], "teacher_weights.pth"),map_location=torch.device(device)))
 
-    logger.info(summary(model,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
-    model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.pth"),map_location=torch.device(device)))
+        cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["batch_size"], device =device,\
+                                name_model = 'teacher',stage =3, check_time_process = True)
+    else:
+        model = models.construct_transformer_student_model(distil_args, word_emb=word_emb)
+        loss_dict = models.compile_model(model, distil_args, stage=2)
+        optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
 
-    cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["batch_size"], device =device,\
-                            name_model = 'student',stage =2, check_time_process = True)
+        logger.info(summary(model,input_size=(384,),depth=1,batch_dim=1, dtypes=[torch.IntTensor]))
+        model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.pth"),map_location=torch.device(device)))
+
+        cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["batch_size"], device =device,\
+                                name_model = 'student',stage =2, check_time_process = True)

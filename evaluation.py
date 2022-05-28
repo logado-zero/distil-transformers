@@ -178,8 +178,9 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
     model.eval()    
     pred_tags_all = []
     true_tags_all = []
-    if check_time_process:
-        time_start = time.time()
+    duration = 0
+    times = 0
+   
     for batch in tqdm(test_generator, total=len(test_generator), leave=False, desc="Predicting"):
         input_ids, attention_mask, token_type_ids = batch[0]["input_ids"].type(torch.LongTensor), batch[0]["attention_mask"].type(torch.LongTensor),\
                                                     batch[0]["token_type_ids"].type(torch.LongTensor)
@@ -187,11 +188,16 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
         
         input_ids, attention_mask, token_type_ids = input_ids.to(device), attention_mask.to(device), token_type_ids.to(device)
         true = true.to(device)
+        if check_time_process:
+            time_start = time.time()
         if name_model == "teacher":
             outputs,_ = model.forward(input_ids, attention_mask, token_type_ids)
         else:
             outputs = model.forward(input_ids, attention_mask, token_type_ids, stage=stage)
-        
+        if check_time_process:
+            time_end = time.time()
+            duration += time_end - time_start
+            times += 1
         for i, seq in enumerate(outputs):
             for j in range(MAX_SEQUENCE_LENGTH):
                 indx = true[i][j]
@@ -204,9 +210,7 @@ def ner_evaluate(model, test_dataset, labels, special_tokens, MAX_SEQUENCE_LENGT
                 pred_label = labels[indx]
                 pred_tags_all.append(pred_label)
     if check_time_process:
-        time_end = time.time()
-        duration = time_end - time_start
-        logger.info("Process time for running test dataset: {} s".format(duration))
+        logger.info("Process time for running test dataset: {} s".format(duration/times))
 
 
     prec, rec, f1 = conlleval.evaluate(true_tags_all, pred_tags_all, special_tokens, verbose=True)
