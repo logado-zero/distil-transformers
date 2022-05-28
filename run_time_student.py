@@ -55,6 +55,7 @@ if __name__ == '__main__':
     #load xtreme distil config
     distil_args = json.load(open(os.path.join(args["model_dir"], "xtremedistil-config.json"), 'r'))
     label_list = distil_args["label_list"]
+    args["label_list"] = distil_args["label_list"]
 
     #get pre-trained model, tokenizer and config
     for indx, model in enumerate(MODELS):
