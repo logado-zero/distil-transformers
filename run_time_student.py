@@ -71,7 +71,7 @@ if __name__ == '__main__':
         logger.info("X Shape {}".format(X["input_ids"].shape))
 
     if args["do_eval"]:
-        X_test, y_test = generate_sequence_data(distil_args["seq_len"], os.path.join(distil_args["task"], "test.tsv"), pt_tokenizer, label_list=label_list, special_tokens=special_tokens, do_pairwise=distil_args["do_pairwise"], do_NER=distil_args["do_NER"])
+        X_test, y_test = generate_sequence_data(distil_args["seq_len"], os.path.join(args["pred_file"], "test.tsv"), pt_tokenizer, label_list=label_list, special_tokens=special_tokens, do_pairwise=distil_args["do_pairwise"], do_NER=distil_args["do_NER"])
         logger.info("X Shape {}".format(X_test["input_ids"].shape))
 
     #initialize word embedding
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(),lr=3e-5, eps=1e-08)
 
     logger.info (model.summary())
-    model.load_weights(os.path.join(args["model_dir"], "xtremedistil.h5"))
+    model.load_state_dict(torch.load(os.path.join(args["model_dir"], "xtremedistil.h5"),map_location=torch.device(device)))
 
     cur_eval = ner_evaluate(model, test_dataset , label_list, special_tokens, distil_args["seq_len"], batch_size=args["student_distil_batch_size"], device =device,\
                             name_model = 'student',stage =2, check_time_process = True)
